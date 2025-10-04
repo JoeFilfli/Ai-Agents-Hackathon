@@ -15,6 +15,8 @@
 
 import React, { useState } from 'react';
 import { useMindmapStore } from '@/app/store/graphStore';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function ChatPanel() {
   // Get store state and actions
@@ -198,9 +200,42 @@ export default function ChatPanel() {
                   {/* Answer */}
                   <div className="flex justify-start">
                     <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 max-w-[85%]">
-                      <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
-                        {msg.answer}
-                      </p>
+                      {/* Render markdown with proper styling */}
+                      <div className="text-slate-200 text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            // Style headers
+                            h1: ({ node, ...props }) => <h1 className="text-xl font-bold text-slate-100 mt-3 mb-2" {...props} />,
+                            h2: ({ node, ...props }) => <h2 className="text-lg font-bold text-slate-100 mt-3 mb-2" {...props} />,
+                            h3: ({ node, ...props }) => <h3 className="text-base font-semibold text-slate-200 mt-2 mb-1" {...props} />,
+                            // Style paragraphs
+                            p: ({ node, ...props }) => <p className="mb-2 text-slate-200" {...props} />,
+                            // Style lists
+                            ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2 space-y-1 text-slate-200" {...props} />,
+                            ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2 space-y-1 text-slate-200" {...props} />,
+                            li: ({ node, ...props }) => <li className="ml-2 text-slate-200" {...props} />,
+                            // Style inline code and code blocks
+                            code: ({ node, className, ...props }) => {
+                              const isInline = !className;
+                              return isInline ? (
+                                <code className="bg-slate-700 px-1.5 py-0.5 rounded text-indigo-300 text-xs font-mono" {...props} />
+                              ) : (
+                                <code className="block bg-slate-900 p-2 rounded text-indigo-300 text-xs font-mono overflow-x-auto" {...props} />
+                              );
+                            },
+                            // Style links
+                            a: ({ node, ...props }) => <a className="text-indigo-400 hover:text-indigo-300 underline" {...props} />,
+                            // Style bold and italic
+                            strong: ({ node, ...props }) => <strong className="font-bold text-slate-100" {...props} />,
+                            em: ({ node, ...props }) => <em className="italic text-slate-200" {...props} />,
+                            // Style blockquotes
+                            blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-slate-600 pl-3 italic text-slate-300 my-2" {...props} />,
+                          }}
+                        >
+                          {msg.answer}
+                        </ReactMarkdown>
+                      </div>
                       
                       {/* Sources */}
                       {msg.sources && msg.sources.length > 0 && (

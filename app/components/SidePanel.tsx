@@ -16,6 +16,8 @@
 
 import React, { useState } from 'react';
 import { useMindmapStore, useSelectedNode } from '@/app/store/graphStore';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Tab type definition - removed 'qa' tab (now in separate ChatPanel)
 type TabType = 'details' | 'relationships';
@@ -406,9 +408,42 @@ export default function SidePanel() {
                     AI Explanation
                   </h4>
                   <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/30 border border-indigo-700 rounded-lg p-4">
-                    <p className="text-slate-200 leading-relaxed text-sm">
-                      {relationshipExplanation}
-                    </p>
+                    {/* Render markdown with proper styling */}
+                    <div className="text-slate-200 leading-relaxed text-sm prose prose-invert prose-sm max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // Style headers
+                          h1: ({ node, ...props }) => <h1 className="text-lg font-bold text-slate-100 mt-2 mb-1" {...props} />,
+                          h2: ({ node, ...props }) => <h2 className="text-base font-bold text-slate-100 mt-2 mb-1" {...props} />,
+                          h3: ({ node, ...props }) => <h3 className="text-sm font-semibold text-slate-200 mt-2 mb-1" {...props} />,
+                          // Style paragraphs
+                          p: ({ node, ...props }) => <p className="mb-2 text-slate-200" {...props} />,
+                          // Style lists
+                          ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2 space-y-1 text-slate-200" {...props} />,
+                          ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2 space-y-1 text-slate-200" {...props} />,
+                          li: ({ node, ...props }) => <li className="ml-2 text-slate-200" {...props} />,
+                          // Style inline code and code blocks
+                          code: ({ node, className, ...props }) => {
+                            const isInline = !className;
+                            return isInline ? (
+                              <code className="bg-slate-700 px-1.5 py-0.5 rounded text-indigo-300 text-xs font-mono" {...props} />
+                            ) : (
+                              <code className="block bg-slate-900 p-2 rounded text-indigo-300 text-xs font-mono overflow-x-auto" {...props} />
+                            );
+                          },
+                          // Style links
+                          a: ({ node, ...props }) => <a className="text-indigo-300 hover:text-indigo-200 underline" {...props} />,
+                          // Style bold and italic
+                          strong: ({ node, ...props }) => <strong className="font-bold text-slate-100" {...props} />,
+                          em: ({ node, ...props }) => <em className="italic text-slate-200" {...props} />,
+                          // Style blockquotes
+                          blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-indigo-500 pl-3 italic text-slate-300 my-2" {...props} />,
+                        }}
+                      >
+                        {relationshipExplanation}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                   
                   {/* Highlighted Nodes Info */}
