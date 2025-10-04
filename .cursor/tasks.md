@@ -86,20 +86,20 @@
 
 ### Phase 5: Frontend Visualization (Day 2 Afternoon)
 
-- [ ] 13. Set up state management
+- [x] 13. Set up state management
   - Create app/store/graphStore.ts with Zustand
   - Define GraphState (nodes, edges, selectedNode)
   - Define UIState (sidePanelOpen, loading)
   - _Test_: Import store, update state, verify changes propagate.
 
-- [ ] 14. Build Cytoscape.js graph renderer
+- [x] 14. Build Cytoscape.js graph renderer
   - Create app/components/Mindmap.tsx
   - Render nodes and edges from state
   - Implement pan and zoom
   - Use force-directed layout
   - _Test_: Load sample graph. Verify nodes/edges render. Pan and zoom work smoothly.
 
-- [ ] 15. Implement node interactions
+- [x] 15. Implement node interactions
   - Click to select node
   - Double-click to expand/collapse
   - Hover to highlight connections
