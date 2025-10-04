@@ -194,7 +194,7 @@ export default function TestMindmapPage() {
               fontWeight: '600',
             }}
           >
-            Select "Python"
+            Select &quot;Python&quot;
           </button>
           
           <button

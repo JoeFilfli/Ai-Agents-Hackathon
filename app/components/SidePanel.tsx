@@ -267,7 +267,7 @@ export default function SidePanel() {
                   </h4>
                   <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
                     <p className="text-slate-300 text-sm italic leading-relaxed">
-                      "{selectedNode.sourceText}"
+                      &quot;{selectedNode.sourceText}&quot;
                     </p>
                   </div>
                 </div>

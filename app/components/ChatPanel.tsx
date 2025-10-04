@@ -180,7 +180,7 @@ export default function ChatPanel() {
                 </h3>
                 <p className="text-slate-400 text-sm max-w-xs">
                   Ask questions about the concepts in your knowledge graph.
-                  I'll help you understand connections and relationships.
+                  I&apos;ll help you understand connections and relationships.
                 </p>
               </div>
             </div>

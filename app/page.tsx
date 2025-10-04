@@ -334,7 +334,7 @@ export default function Home() {
               
               <p className="text-sm text-slate-300 mb-4">
                 Paste or type any text you want to analyze, or upload a PDF file.
-                We'll extract key concepts and relationships to create an interactive knowledge graph.
+                We&apos;ll extract key concepts and relationships to create an interactive knowledge graph.
               </p>
               
               {/* File Upload Section */}
