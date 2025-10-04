@@ -1,13 +1,24 @@
 """
 Simple test script to verify OpenAI API connection and dependencies.
 Run this after setting up your .env.local file with OPENAI_API_KEY.
+
+Run from project root: python -m api.tests.test_setup
+Or from anywhere: python api/tests/test_setup.py
 """
 
 import os
+import sys
+from pathlib import Path
+
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 from dotenv import load_dotenv
 
-# Load environment variables from .env.local
-load_dotenv('.env.local')
+# Load environment variables from .env.local in project root
+env_path = project_root / '.env.local'
+load_dotenv(env_path)
 
 def test_imports():
     """Test that all required packages can be imported."""
@@ -44,11 +55,10 @@ def test_imports():
     return True
 
 
-import os
-from openai import OpenAI
-
 def test_openai_connection():
     """Test OpenAI API connection with a simple request."""
+    from openai import OpenAI
+    
     print("\n✓ Testing OpenAI API connection...")
 
     # Check if API key is set
@@ -149,5 +159,5 @@ def main():
 
 if __name__ == "__main__":
     success = main()
-    exit(0 if success else 1)
+    sys.exit(0 if success else 1)
 

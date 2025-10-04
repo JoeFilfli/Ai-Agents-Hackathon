@@ -16,7 +16,7 @@
   - Create .env.local with OPENAI_API_KEY
   - _Test_: Run `pip install -r requirements.txt` and `npm install`. Test OpenAI connection with simple API call.
 
-- [ ] 2. Core data models
+- [x] 2. Core data models
   - Create api/models/graph_models.py with Node, Edge, Graph Pydantic models
   - Create app/types/graph.ts with TypeScript interfaces
   - _Test_: Import models, create sample instances, verify TypeScript compiles.
