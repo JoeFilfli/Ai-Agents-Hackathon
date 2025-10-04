@@ -157,9 +157,50 @@ path = service.get_path("my_graph", "node_1", "node_2")
 stats = service.get_graph_statistics("my_graph")
 ```
 
+## LLM Service
+
+### `llm_service.py`
+
+Service for LLM-powered explanations and Q&A using GPT-4.
+
+**Key Features:**
+- Relationship explanations between nodes
+- Question answering about the knowledge graph
+- Graph summarization
+- Context-aware responses using graph structure
+
+**Usage:**
+
+```python
+from api.services.llm_service import LLMService
+
+# Initialize service
+service = LLMService()
+
+# Generate relationship explanation
+explanation = service.explain_relationship(
+    source_node={"label": "Python", "description": "Programming language"},
+    target_node={"label": "Data Science", "description": "Field of data analysis"},
+    path=[source_node, intermediate_node, target_node],
+    relationship_type="used-in"
+)
+
+# Answer questions about the graph
+result = service.answer_question(
+    question="What is Python used for?",
+    graph_context={
+        "nodes": [...],
+        "edges": [...],
+        "paths": [...]
+    }
+)
+
+# Generate graph summary
+summary = service.generate_summary(nodes, edges)
+```
+
 ## Future Services
 
 Coming in next phases:
-- `llm_service.py` - Relationship explanations and Q&A
 - `tts_service.py` - Text-to-speech synthesis
 

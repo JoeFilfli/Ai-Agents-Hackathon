@@ -129,6 +129,22 @@ Tests the graph API endpoints (Task 9).
 python api/tests/test_graph_api.py
 ```
 
+### `test_llm_service.py`
+Tests the LLM service for relationship explanations and Q&A (Task 10).
+
+**What it tests:**
+- ✓ Relationship explanation between two nodes
+- ✓ Explanation for node with 3+ connections
+- ✓ Q&A functionality with graph context
+- ✓ Graph summary generation
+
+**Run:**
+```bash
+python api/tests/test_llm_service.py
+```
+
+**Note:** This test makes actual API calls to OpenAI and may take 30-60 seconds to complete.
+
 ## Running All Tests
 
 To run all tests in sequence:
@@ -157,6 +173,9 @@ python api/tests/test_graph_service.py
 
 # Test 8: Graph API endpoints
 python api/tests/test_graph_api.py
+
+# Test 9: LLM service (relationship explanations)
+python api/tests/test_llm_service.py
 ```
 
 ## Prerequisites

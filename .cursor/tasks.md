@@ -67,13 +67,13 @@
 
 ### Phase 4: LLM Integration (Day 2 Morning)
 
-- [ ] 10. Implement relationship explanation
+- [x] 10. Implement relationship explanation
   - Create api/services/llm_service.py
   - Build prompts with graph context (node + connected nodes + paths)
   - Use GPT-4 to generate natural language explanations
   - _Test_: Request explanation for node with 3 connections. Verify explanation mentions all related nodes.
 
-- [ ] 11. Implement Q&A functionality
+- [x] 11. Implement Q&A functionality
   - Add Q&A method with conversation history
   - Include graph context (node + 2-hop neighbors)
   - Return answers with citations
