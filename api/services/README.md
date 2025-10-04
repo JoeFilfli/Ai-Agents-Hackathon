@@ -118,7 +118,9 @@ This tests:
 **Key Features:**
 - In-memory graph storage
 - NetworkX integration
+- Graph traversal (BFS, DFS)
 - Path finding (shortest path, all paths)
+- Node expansion for UI interactions
 - Subgraph extraction
 - Distance queries (n-hop neighbors)
 - Graph statistics
@@ -141,6 +143,13 @@ edges = [
 ]
 
 G = service.create_graph("my_graph", nodes, edges)
+
+# Traversal operations
+bfs_order = service.bfs_traversal("my_graph", "node_1")
+dfs_order = service.dfs_traversal("my_graph", "node_1")
+
+# Node expansion (for UI)
+expansion = service.expand_node("my_graph", "node_1", depth=1)
 
 # Query operations
 neighbors = service.get_neighbors("my_graph", "node_1")

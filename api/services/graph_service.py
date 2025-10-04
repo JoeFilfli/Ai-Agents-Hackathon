@@ -165,7 +165,7 @@ class GraphService:
         """
         return list(self._graphs.keys())
     
-    def get_node_data(self, graph_id: str, node_id: str) -> Optional[Dict[str, Any]]:
+    def get_node(self, graph_id: str, node_id: str) -> Optional[Dict[str, Any]]:
         """
         Get data for a specific node.
         
@@ -184,6 +184,93 @@ class GraphService:
         node_data = dict(G.nodes[node_id])
         node_data['id'] = node_id
         return node_data
+    
+    def get_node_data(self, graph_id: str, node_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get data for a specific node (alias for get_node).
+        
+        Args:
+            graph_id: Unique identifier for the graph
+            node_id: Unique identifier for the node
+            
+        Returns:
+            Node data dictionary or None if not found
+        """
+        return self.get_node(graph_id, node_id)
+    
+    def get_all_nodes(self, graph_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all nodes in a graph.
+        
+        Args:
+            graph_id: Unique identifier for the graph
+            
+        Returns:
+            List of node dictionaries
+        """
+        G = self.get_graph(graph_id)
+        if not G:
+            return []
+        
+        # Convert all nodes to dictionaries
+        nodes = []
+        for node_id in G.nodes():
+            node_data = dict(G.nodes[node_id])
+            node_data['id'] = node_id
+            nodes.append(node_data)
+        
+        return nodes
+    
+    def get_edge(
+        self,
+        graph_id: str,
+        source: str,
+        target: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get data for a specific edge.
+        
+        Args:
+            graph_id: Unique identifier for the graph
+            source: Source node ID
+            target: Target node ID
+            
+        Returns:
+            Edge data dictionary or None if not found
+        """
+        G = self.get_graph(graph_id)
+        if not G or not G.has_edge(source, target):
+            return None
+        
+        # Return edge data with source and target included
+        edge_data = dict(G.edges[source, target])
+        edge_data['source'] = source
+        edge_data['target'] = target
+        return edge_data
+    
+    def get_all_edges(self, graph_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all edges in a graph.
+        
+        Args:
+            graph_id: Unique identifier for the graph
+            
+        Returns:
+            List of edge dictionaries
+        """
+        G = self.get_graph(graph_id)
+        if not G:
+            return []
+        
+        # Convert all edges to dictionaries
+        edges = []
+        for source, target in G.edges():
+            edge_data = dict(G.edges[source, target])
+            edge_data['source'] = source
+            edge_data['target'] = target
+            edges.append(edge_data)
+        
+        return edges
     
     def get_neighbors(
         self,
@@ -285,6 +372,115 @@ class GraphService:
             return None
         
         return G.subgraph(valid_nodes).copy()
+    
+    def expand_node(
+        self,
+        graph_id: str,
+        node_id: str,
+        depth: int = 1
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Expand a node to get its local subgraph (node + neighbors).
+        
+        This is useful for UI node expansion - get the node and all
+        connected nodes within a specified depth.
+        
+        Args:
+            graph_id: Unique identifier for the graph
+            node_id: Node to expand
+            depth: How many hops to include (default: 1)
+            
+        Returns:
+            Dictionary with 'nodes' and 'edges' lists, or None if not found
+        """
+        G = self.get_graph(graph_id)
+        if not G or node_id not in G:
+            return None
+        
+        # Get all nodes within depth
+        nodes_to_include = {node_id}
+        nodes_to_include.update(
+            self.get_nodes_within_distance(graph_id, node_id, depth)
+        )
+        
+        # Extract subgraph
+        subgraph = self.get_subgraph(graph_id, list(nodes_to_include))
+        
+        if not subgraph:
+            return None
+        
+        # Convert to node/edge format
+        nodes = []
+        for nid in subgraph.nodes():
+            node_data = dict(subgraph.nodes[nid])
+            node_data['id'] = nid
+            nodes.append(node_data)
+        
+        edges = []
+        for source, target in subgraph.edges():
+            edge_data = dict(subgraph.edges[source, target])
+            edge_data['source'] = source
+            edge_data['target'] = target
+            edges.append(edge_data)
+        
+        return {
+            'nodes': nodes,
+            'edges': edges,
+            'center_node': node_id,
+            'depth': depth
+        }
+    
+    def bfs_traversal(
+        self,
+        graph_id: str,
+        start_node: str
+    ) -> List[str]:
+        """
+        Perform breadth-first search (BFS) traversal from a starting node.
+        
+        BFS explores nodes level by level, visiting all neighbors before
+        moving to the next level. Good for finding shortest paths.
+        
+        Args:
+            graph_id: Unique identifier for the graph
+            start_node: Node to start traversal from
+            
+        Returns:
+            List of node IDs in BFS order
+        """
+        G = self.get_graph(graph_id)
+        if not G or start_node not in G:
+            return []
+        
+        # Use NetworkX BFS
+        bfs_order = list(nx.bfs_tree(G, start_node).nodes())
+        return bfs_order
+    
+    def dfs_traversal(
+        self,
+        graph_id: str,
+        start_node: str
+    ) -> List[str]:
+        """
+        Perform depth-first search (DFS) traversal from a starting node.
+        
+        DFS explores as far as possible along each branch before backtracking.
+        Good for exploring graph structure and finding cycles.
+        
+        Args:
+            graph_id: Unique identifier for the graph
+            start_node: Node to start traversal from
+            
+        Returns:
+            List of node IDs in DFS order
+        """
+        G = self.get_graph(graph_id)
+        if not G or start_node not in G:
+            return []
+        
+        # Use NetworkX DFS
+        dfs_order = list(nx.dfs_tree(G, start_node).nodes())
+        return dfs_order
     
     def get_path(
         self,

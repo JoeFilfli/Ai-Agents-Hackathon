@@ -53,13 +53,13 @@
   - Store graphs in-memory with dict (graph_id -> Graph)
   - _Test_: Create graph with 10 nodes. Verify NetworkX graph has correct structure.
 
-- [ ] 8. Implement graph traversal
+- [x] 8. Implement graph traversal
   - Add BFS, DFS, shortest path methods
   - Implement subgraph extraction for node expansion
   - Find paths up to 3 hops for relationship explanations
   - _Test_: Create graph A->B->C->D. BFS from A returns [A,B,C,D]. Expand B returns subgraph.
 
-- [ ] 9. Create graph API endpoints
+- [x] 9. Create graph API endpoints
   - GET /api/py/graph/{graph_id} - retrieve graph
   - POST /api/py/graph/{graph_id}/expand/{node_id} - expand node
   - POST /api/py/graph/{graph_id}/relationships/{node_id} - get relationship paths

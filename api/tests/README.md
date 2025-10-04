@@ -97,12 +97,14 @@ python api/tests/test_api.py
 ```
 
 ### `test_graph_service.py`
-Tests the NetworkX graph service.
+Tests the NetworkX graph service (Tasks 7 & 8).
 
 **What it tests:**
 - ✓ Graph creation with nodes and edges
 - ✓ Graph storage and retrieval
 - ✓ Node and edge queries
+- ✓ BFS/DFS traversal (Task 8)
+- ✓ Node expansion for UI (Task 8)
 - ✓ Path finding (shortest path, all paths)
 - ✓ Subgraph extraction
 - ✓ Distance queries (n-hop neighbors)
@@ -111,6 +113,20 @@ Tests the NetworkX graph service.
 **Run:**
 ```bash
 python api/tests/test_graph_service.py
+```
+
+### `test_graph_api.py`
+Tests the graph API endpoints (Task 9).
+
+**What it tests:**
+- ✓ GET /api/py/graph/{graph_id} - retrieve graph
+- ✓ POST /api/py/graph/{graph_id}/expand/{node_id} - expand node
+- ✓ POST /api/py/graph/{graph_id}/relationships/{node_id} - get relationship paths
+- ✓ Error handling (404 for non-existent graphs/nodes)
+
+**Run:**
+```bash
+python api/tests/test_graph_api.py
 ```
 
 ## Running All Tests
@@ -138,6 +154,9 @@ python api/tests/test_api.py
 
 # Test 7: Graph service
 python api/tests/test_graph_service.py
+
+# Test 8: Graph API endpoints
+python api/tests/test_graph_api.py
 ```
 
 ## Prerequisites

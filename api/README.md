@@ -65,6 +65,80 @@ Process raw text and extract a knowledge graph.
 }
 ```
 
+### Graph Operations
+
+#### Retrieve Graph
+```
+GET /api/py/graph/{graph_id}
+```
+Retrieve a previously generated graph by its ID. Returns all nodes, edges, and graph statistics.
+
+**Response:**
+```json
+{
+  "graph_id": "graph_abc123",
+  "nodes": [...],
+  "edges": [...],
+  "statistics": {
+    "node_count": 5,
+    "edge_count": 3,
+    "density": 0.6,
+    "avg_degree": 1.2
+  }
+}
+```
+
+#### Expand Node
+```
+POST /api/py/graph/{graph_id}/expand/{node_id}
+```
+Expand a node to get its local neighborhood subgraph. Useful for interactive UI exploration.
+
+**Request Body:**
+```json
+{
+  "depth": 1
+}
+```
+
+**Response:**
+```json
+{
+  "center_node": "node_0",
+  "nodes": [...],
+  "edges": [...],
+  "depth": 1
+}
+```
+
+#### Get Relationship Paths
+```
+POST /api/py/graph/{graph_id}/relationships/{node_id}
+```
+Get relationship paths and connections from a specific node (up to 3 hops).
+
+**Response:**
+```json
+{
+  "node_id": "node_0",
+  "paths": [
+    {
+      "target": "node_2",
+      "path": ["node_0", "node_1", "node_2"],
+      "length": 2,
+      "nodes": [...]
+    }
+  ],
+  "neighbors": [...],
+  "statistics": {
+    "total_paths": 5,
+    "direct_neighbors": 2,
+    "reachable_nodes": 4,
+    "avg_path_length": 1.5
+  }
+}
+```
+
 ## Running the Server
 
 ### Development Mode
@@ -103,6 +177,12 @@ python api/tests/test_embeddings.py
 
 # API endpoint tests
 python api/tests/test_api.py
+
+# Graph service tests
+python api/tests/test_graph_service.py
+
+# Graph API endpoint tests
+python api/tests/test_graph_api.py
 ```
 
 ## Interactive API Testing
@@ -135,6 +215,23 @@ curl -X POST http://127.0.0.1:8000/api/py/text/process \
     "max_concepts": 5,
     "min_importance": 0.5
   }'
+```
+
+Retrieve a graph:
+```bash
+curl http://127.0.0.1:8000/api/py/graph/graph_abc123
+```
+
+Expand a node:
+```bash
+curl -X POST http://127.0.0.1:8000/api/py/graph/graph_abc123/expand/node_0 \
+  -H "Content-Type: application/json" \
+  -d '{"depth": 1}'
+```
+
+Get relationship paths:
+```bash
+curl -X POST http://127.0.0.1:8000/api/py/graph/graph_abc123/relationships/node_0
 ```
 
 ## Directory Structure

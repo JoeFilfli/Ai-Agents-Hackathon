@@ -219,6 +219,117 @@ def test_node_edge_queries():
         return False
 
 
+def test_bfs_dfs_traversal():
+    """Test BFS and DFS traversal as specified in Task 8."""
+    print("\n" + "=" * 60)
+    print("Testing BFS and DFS Traversal (Task 8)")
+    print("=" * 60)
+    
+    try:
+        from api.services.graph_service import GraphService
+        
+        service = GraphService()
+        
+        # Create graph A->B->C->D as specified in task
+        nodes = [
+            {"id": "A", "label": "Node A"},
+            {"id": "B", "label": "Node B"},
+            {"id": "C", "label": "Node C"},
+            {"id": "D", "label": "Node D"}
+        ]
+        edges = [
+            {"source": "A", "target": "B"},
+            {"source": "B", "target": "C"},
+            {"source": "C", "target": "D"}
+        ]
+        
+        service.create_graph("traversal_test", nodes, edges)
+        
+        # Test BFS from A (should return [A, B, C, D])
+        bfs_result = service.bfs_traversal("traversal_test", "A")
+        print(f"  BFS from A: {bfs_result}")
+        
+        if bfs_result == ["A", "B", "C", "D"]:
+            print("✓ BFS traversal correct: [A, B, C, D]")
+        else:
+            print(f"✗ BFS traversal incorrect: {bfs_result} (expected [A, B, C, D])")
+            return False
+        
+        # Test DFS from A
+        dfs_result = service.dfs_traversal("traversal_test", "A")
+        print(f"  DFS from A: {dfs_result}")
+        
+        if len(dfs_result) == 4 and dfs_result[0] == "A":
+            print(f"✓ DFS traversal has all 4 nodes starting from A")
+        else:
+            print(f"✗ DFS traversal incorrect")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ BFS/DFS traversal test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def test_node_expansion():
+    """Test node expansion as specified in Task 8."""
+    print("\n" + "=" * 60)
+    print("Testing Node Expansion (Task 8)")
+    print("=" * 60)
+    
+    try:
+        from api.services.graph_service import GraphService
+        
+        service = GraphService()
+        
+        # Create graph A->B->C->D
+        nodes = [
+            {"id": "A", "label": "Node A"},
+            {"id": "B", "label": "Node B"},
+            {"id": "C", "label": "Node C"},
+            {"id": "D", "label": "Node D"}
+        ]
+        edges = [
+            {"source": "A", "target": "B"},
+            {"source": "B", "target": "C"},
+            {"source": "C", "target": "D"}
+        ]
+        
+        service.create_graph("expansion_test", nodes, edges)
+        
+        # Expand node B (should return subgraph with B and neighbors)
+        expansion = service.expand_node("expansion_test", "B", depth=1)
+        
+        if expansion:
+            print(f"✓ Node B expanded successfully")
+            print(f"  - Center node: {expansion['center_node']}")
+            print(f"  - Nodes in expansion: {[n['id'] for n in expansion['nodes']]}")
+            print(f"  - Edges in expansion: {len(expansion['edges'])}")
+            
+            node_ids = [n['id'] for n in expansion['nodes']]
+            
+            # Should include B and its neighbors (A, C)
+            if 'B' in node_ids and ('A' in node_ids or 'C' in node_ids):
+                print("✓ Expansion includes B and at least one neighbor")
+            else:
+                print(f"✗ Expansion missing expected nodes")
+                return False
+        else:
+            print("✗ Failed to expand node B")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ Node expansion test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def test_path_finding():
     """Test finding paths between nodes."""
     print("\n" + "=" * 60)
@@ -440,6 +551,8 @@ def main():
     creation_ok = test_graph_creation()
     storage_ok = test_graph_storage_retrieval()
     queries_ok = test_node_edge_queries()
+    bfs_dfs_ok = test_bfs_dfs_traversal()
+    expansion_ok = test_node_expansion()
     paths_ok = test_path_finding()
     subgraph_ok = test_subgraph_extraction()
     distance_ok = test_distance_queries()
@@ -452,19 +565,21 @@ def main():
     print(f"  Graph Creation:      {'✓ PASS' if creation_ok else '✗ FAIL'}")
     print(f"  Storage/Retrieval:   {'✓ PASS' if storage_ok else '✗ FAIL'}")
     print(f"  Node/Edge Queries:   {'✓ PASS' if queries_ok else '✗ FAIL'}")
+    print(f"  BFS/DFS Traversal:   {'✓ PASS' if bfs_dfs_ok else '✗ FAIL'}")
+    print(f"  Node Expansion:      {'✓ PASS' if expansion_ok else '✗ FAIL'}")
     print(f"  Path Finding:        {'✓ PASS' if paths_ok else '✗ FAIL'}")
     print(f"  Subgraph Extraction: {'✓ PASS' if subgraph_ok else '✗ FAIL'}")
     print(f"  Distance Queries:    {'✓ PASS' if distance_ok else '✗ FAIL'}")
     print(f"  Graph Statistics:    {'✓ PASS' if stats_ok else '✗ FAIL'}")
     
     all_passed = all([
-        creation_ok, storage_ok, queries_ok, paths_ok,
-        subgraph_ok, distance_ok, stats_ok
+        creation_ok, storage_ok, queries_ok, bfs_dfs_ok, expansion_ok,
+        paths_ok, subgraph_ok, distance_ok, stats_ok
     ])
     
     if all_passed:
         print("\n🎉 All tests passed!")
-        print("   Task 7 is complete. Ready for Task 8!")
+        print("   Task 7 & 8 are complete. Ready for Task 9!")
         return True
     else:
         print("\n⚠ Some tests failed. Please review the errors above.")
