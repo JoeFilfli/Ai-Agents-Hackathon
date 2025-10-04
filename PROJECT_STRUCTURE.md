@@ -17,6 +17,7 @@ Ai_Agents/
 │   │   ├── test_models.py      # Data model tests
 │   │   ├── test_text_processing.py  # Concept extraction tests
 │   │   ├── test_relationships.py    # Relationship extraction tests
+│   │   ├── test_embeddings.py  # Embedding generation tests
 │   │   └── README.md
 │   └── index.py                # Main FastAPI application
 │
@@ -84,6 +85,9 @@ python api/tests/test_text_processing.py
 
 # Relationship extraction tests
 python api/tests/test_relationships.py
+
+# Embedding generation tests
+python api/tests/test_embeddings.py
 ```
 
 ### Frontend Tests

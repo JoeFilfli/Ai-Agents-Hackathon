@@ -63,6 +63,23 @@ Tests relationship extraction between concepts.
 python api/tests/test_relationships.py
 ```
 
+### `test_embeddings.py`
+Tests embedding generation and semantic similarity.
+
+**What it tests:**
+- ✓ Single embedding generation
+- ✓ Batch embedding generation
+- ✓ Embedding dimensions (1536 for text-embedding-3-small)
+- ✓ Cosine similarity for similar concepts
+- ✓ Cosine similarity for dissimilar concepts
+- ✓ Adding embeddings to concepts
+- ✓ Full pipeline with embeddings
+
+**Run:**
+```bash
+python api/tests/test_embeddings.py
+```
+
 ## Running All Tests
 
 To run all tests in sequence:
@@ -79,6 +96,9 @@ python api/tests/test_text_processing.py
 
 # Test 4: Relationship extraction
 python api/tests/test_relationships.py
+
+# Test 5: Embedding generation
+python api/tests/test_embeddings.py
 ```
 
 ## Prerequisites

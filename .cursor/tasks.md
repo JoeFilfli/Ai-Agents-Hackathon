@@ -34,7 +34,7 @@
   - Use GPT-4 prompt: "Identify relationships as JSON: {relationships: [{source, target, type, strength}]}"
   - _Test_: Process text "Python is a programming language". Verify extracts (Python, is-a, programming language).
 
-- [ ] 5. Generate OpenAI embeddings
+- [x] 5. Generate OpenAI embeddings
   - Add embedding generation using text-embedding-3-small
   - Store embeddings with each node
   - _Test_: Generate embeddings for 2 concepts. Verify 1536-dim vectors. Check similar concepts have high cosine similarity.

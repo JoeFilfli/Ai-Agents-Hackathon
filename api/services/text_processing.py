@@ -6,6 +6,7 @@ This service uses OpenAI GPT-4 to:
 2. Generate descriptions for each concept
 3. Assign importance scores to concepts
 4. Identify relationships between concepts
+5. Generate embeddings for semantic similarity
 
 The extracted concepts become nodes and relationships become edges
 in the knowledge graph.
@@ -13,6 +14,7 @@ in the knowledge graph.
 
 import os
 import json
+import numpy as np
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -35,16 +37,18 @@ class TextProcessingService:
     - Relationships between concepts with types and strengths
     """
     
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None, embedding_model: Optional[str] = None):
         """
         Initialize the text processing service.
         
         Args:
             api_key: OpenAI API key (uses env var if not provided)
-            model: Model to use (uses env var or default if not provided)
+            model: Model to use for text generation (uses env var or default if not provided)
+            embedding_model: Model to use for embeddings (uses env var or default if not provided)
         """
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.model = model or os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+        self.embedding_model = embedding_model or os.getenv('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
         
         if not self.api_key:
             raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
@@ -318,19 +322,150 @@ Remember: Return ONLY the JSON object, no additional text."""
         except Exception as e:
             raise Exception(f"Relationship extraction failed: {e}")
     
+    def generate_embedding(self, text: str) -> List[float]:
+        """
+        Generate embedding vector for a text string using OpenAI.
+        
+        Args:
+            text: Text to generate embedding for
+            
+        Returns:
+            List of floats representing the embedding vector (1536 dimensions)
+            
+        Raises:
+            Exception: If embedding generation fails
+        """
+        try:
+            # Call OpenAI embedding API
+            response = self.client.embeddings.create(
+                model=self.embedding_model,
+                input=text
+            )
+            
+            # Extract embedding from response
+            embedding = response.data[0].embedding
+            
+            return embedding
+            
+        except Exception as e:
+            raise Exception(f"Embedding generation failed: {e}")
+    
+    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for multiple texts in a single API call.
+        
+        This is more efficient than calling generate_embedding() multiple times.
+        
+        Args:
+            texts: List of text strings to generate embeddings for
+            
+        Returns:
+            List of embedding vectors, one for each input text
+            
+        Raises:
+            Exception: If embedding generation fails
+        """
+        if not texts:
+            return []
+        
+        try:
+            # Call OpenAI embedding API with batch
+            response = self.client.embeddings.create(
+                model=self.embedding_model,
+                input=texts
+            )
+            
+            # Extract embeddings from response
+            embeddings = [item.embedding for item in response.data]
+            
+            return embeddings
+            
+        except Exception as e:
+            raise Exception(f"Batch embedding generation failed: {e}")
+    
+    def add_embeddings_to_concepts(
+        self, 
+        concepts: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Add embeddings to a list of concepts.
+        
+        Generates embeddings based on concept name and description,
+        then adds them to each concept dictionary.
+        
+        Args:
+            concepts: List of concept dictionaries
+            
+        Returns:
+            Updated list of concepts with embeddings added
+        """
+        if not concepts:
+            return concepts
+        
+        try:
+            # Build texts for embedding (combine name and description)
+            texts = [
+                f"{c.get('name', '')}: {c.get('description', '')}"
+                for c in concepts
+            ]
+            
+            # Generate embeddings in batch
+            embeddings = self.generate_embeddings_batch(texts)
+            
+            # Add embeddings to concepts
+            for i, concept in enumerate(concepts):
+                concept['embedding'] = embeddings[i]
+            
+            return concepts
+            
+        except Exception as e:
+            # Log error but don't fail - return concepts without embeddings
+            print(f"Warning: Failed to add embeddings: {e}")
+            return concepts
+    
+    @staticmethod
+    def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+        """
+        Calculate cosine similarity between two vectors.
+        
+        Args:
+            vec1: First vector
+            vec2: Second vector
+            
+        Returns:
+            Cosine similarity score (0-1, where 1 is most similar)
+        """
+        # Convert to numpy arrays
+        v1 = np.array(vec1)
+        v2 = np.array(vec2)
+        
+        # Calculate cosine similarity
+        dot_product = np.dot(v1, v2)
+        norm1 = np.linalg.norm(v1)
+        norm2 = np.linalg.norm(v2)
+        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        
+        similarity = dot_product / (norm1 * norm2)
+        
+        return float(similarity)
+    
     def process_text(
         self,
         text: str,
         max_concepts: int = 10,
         min_importance: float = 0.5,
         min_strength: float = 0.5,
-        extract_rels: bool = True
+        extract_rels: bool = True,
+        generate_embeddings: bool = True
     ) -> Dict[str, Any]:
         """
         Process text and return extracted concepts and relationships with metadata.
         
         This is the main entry point for text processing. It validates input,
-        extracts concepts and relationships, and returns a structured response.
+        extracts concepts, generates embeddings, extracts relationships,
+        and returns a structured response.
         
         Args:
             text: Input text to process
@@ -338,10 +473,11 @@ Remember: Return ONLY the JSON object, no additional text."""
             min_importance: Minimum importance score (0-1) for concepts
             min_strength: Minimum strength score (0-1) for relationships
             extract_rels: Whether to extract relationships (default: True)
+            generate_embeddings: Whether to generate embeddings (default: True)
             
         Returns:
             Dictionary containing:
-            - concepts: List of extracted concept dictionaries
+            - concepts: List of extracted concept dictionaries (with embeddings if enabled)
             - relationships: List of extracted relationship dictionaries (if extract_rels=True)
             - metadata: Processing metadata (model used, parameters, etc.)
             
@@ -352,15 +488,21 @@ Remember: Return ONLY the JSON object, no additional text."""
         # Extract concepts
         concepts = self.extract_concepts(text, max_concepts, min_importance)
         
+        # Generate embeddings if requested
+        if generate_embeddings and len(concepts) > 0:
+            concepts = self.add_embeddings_to_concepts(concepts)
+        
         # Build response
         response = {
             "concepts": concepts,
             "metadata": {
                 "model": self.model,
+                "embedding_model": self.embedding_model,
                 "max_concepts": max_concepts,
                 "min_importance": min_importance,
                 "concepts_found": len(concepts),
-                "input_length": len(text)
+                "input_length": len(text),
+                "embeddings_generated": generate_embeddings
             }
         }
         

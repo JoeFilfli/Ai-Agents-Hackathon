@@ -12,6 +12,8 @@ Extracts concepts and relationships from raw text using OpenAI GPT-4.
 - Input validation (100-50,000 characters)
 - Concept extraction with GPT-4
 - Relationship extraction between concepts
+- Embedding generation with text-embedding-3-small (1536 dimensions)
+- Cosine similarity calculation for semantic search
 - Structured JSON output
 - Configurable parameters (max concepts, min importance, min strength)
 
@@ -72,6 +74,17 @@ relationships = service.extract_relationships(
     concepts=concepts_list,
     min_strength=0.5
 )
+
+# Generate embeddings
+embedding = service.generate_embedding("Your text here...")
+# Returns: [0.1, 0.2, ...] (1536 dimensions)
+
+# Batch generate embeddings
+embeddings = service.generate_embeddings_batch(["Text 1", "Text 2", "Text 3"])
+
+# Calculate similarity
+similarity = TextProcessingService.cosine_similarity(embedding1, embedding2)
+# Returns: 0.0 to 1.0 (higher = more similar)
 ```
 
 **Validation Rules:**
@@ -82,6 +95,7 @@ relationships = service.extract_relationships(
 **Environment Variables:**
 - `OPENAI_API_KEY` - Required
 - `OPENAI_MODEL` - Optional (default: gpt-4o-mini)
+- `OPENAI_EMBEDDING_MODEL` - Optional (default: text-embedding-3-small)
 
 ## Testing
 
