@@ -227,7 +227,7 @@ def hello_fast_api():
 @app.post(
     "/api/py/file/extract",
     tags=["Text Processing"],
-    summary="Extract text from uploaded file (PDF or image)",
+    summary="Extract text from uploaded PDF file",
     status_code=status.HTTP_200_OK,
     responses={
         400: {"model": ErrorResponse, "description": "Invalid file or unsupported type"},
@@ -236,20 +236,15 @@ def hello_fast_api():
 )
 async def extract_text_from_file(file: UploadFile = File(...)):
     """
-    Extract text from an uploaded file (PDF or image with OCR).
+    Extract text from an uploaded PDF file.
     
     Supported file types:
     - **PDF**: .pdf
-    - **Images**: .jpg, .jpeg, .png, .webp, .gif, .bmp, .tiff
-    
-    For images, OCR (Optical Character Recognition) is used to extract text.
-    
-    **Note**: Tesseract OCR must be installed on the system for image processing.
     
     **Returns:**
     - **text**: Extracted text from the file
     - **filename**: Original filename
-    - **file_type**: Type of file processed
+    - **file_type**: Type of file processed (always "pdf")
     - **char_count**: Number of characters extracted
     """
     try:
@@ -267,7 +262,7 @@ async def extract_text_from_file(file: UploadFile = File(...)):
         if not extraction_service.is_supported_file(file.filename):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unsupported file type. Supported: PDF and images (.jpg, .png, etc.)"
+                detail=f"Unsupported file type. Only PDF files (.pdf) are supported."
             )
         
         # Read file content

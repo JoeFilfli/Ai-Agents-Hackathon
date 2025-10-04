@@ -1,9 +1,7 @@
 """
 File Extraction Service
 
-This service handles extracting text from various file types:
-- PDF files (.pdf)
-- Image files (.jpg, .jpeg, .png, .webp, .gif) using OCR
+This service handles extracting text from PDF files.
 
 The extracted text can then be processed by the TextProcessingService.
 """
@@ -12,22 +10,18 @@ import io
 from pathlib import Path
 from typing import Optional
 from pypdf import PdfReader
-from PIL import Image
-import pytesseract
 
 
 class FileExtractionService:
     """
-    Service for extracting text from uploaded files.
+    Service for extracting text from uploaded PDF files.
     
     Supports:
     - PDF files (using pypdf)
-    - Images (using pytesseract OCR)
     """
     
     # Supported file extensions
     SUPPORTED_PDF_EXTENSIONS = {'.pdf'}
-    SUPPORTED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tiff'}
     
     def __init__(self):
         """Initialize the file extraction service."""
@@ -73,53 +67,6 @@ class FileExtractionService:
         except Exception as e:
             raise ValueError(f"Failed to extract text from PDF: {str(e)}")
     
-    def extract_text_from_image(self, file_content: bytes, filename: str = "image") -> str:
-        """
-        Extract text from an image using OCR (Optical Character Recognition).
-        
-        Args:
-            file_content: Raw bytes of the image file
-            filename: Original filename (for error messages)
-            
-        Returns:
-            Extracted text from the image
-            
-        Raises:
-            ValueError: If image cannot be read or OCR fails
-        """
-        try:
-            # Open image from bytes
-            image = Image.open(io.BytesIO(file_content))
-            
-            # Convert to RGB if needed (some formats like PNG with alpha channel)
-            if image.mode not in ('RGB', 'L'):
-                image = image.convert('RGB')
-            
-            # Perform OCR
-            # pytesseract must be installed on the system
-            # For Windows: Download installer from https://github.com/UB-Mannheim/tesseract/wiki
-            # For Linux: sudo apt-get install tesseract-ocr
-            # For Mac: brew install tesseract
-            text = pytesseract.image_to_string(image, lang='eng')
-            
-            # Validate extracted text
-            if not text.strip():
-                raise ValueError(
-                    "No text could be extracted from image. "
-                    "The image may not contain readable text or the quality may be too low."
-                )
-            
-            return text.strip()
-            
-        except pytesseract.TesseractNotFoundError:
-            raise ValueError(
-                "Tesseract OCR is not installed on the system. "
-                "Please install Tesseract OCR to process images. "
-                "Visit: https://github.com/tesseract-ocr/tesseract"
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to extract text from image '{filename}': {str(e)}")
-    
     def extract_text_from_file(
         self, 
         file_content: bytes, 
@@ -127,7 +74,7 @@ class FileExtractionService:
         content_type: Optional[str] = None
     ) -> str:
         """
-        Extract text from a file (auto-detects type).
+        Extract text from a PDF file.
         
         Args:
             file_content: Raw bytes of the file
@@ -143,21 +90,12 @@ class FileExtractionService:
         # Get file extension
         file_ext = Path(filename).suffix.lower()
         
-        # Route to appropriate extractor
+        # Check if it's a PDF
         if file_ext in self.SUPPORTED_PDF_EXTENSIONS or content_type == 'application/pdf':
             return self.extract_text_from_pdf(file_content)
-        
-        elif file_ext in self.SUPPORTED_IMAGE_EXTENSIONS or (
-            content_type and content_type.startswith('image/')
-        ):
-            return self.extract_text_from_image(file_content, filename)
-        
         else:
             # Unsupported file type
-            supported_types = ', '.join(
-                list(self.SUPPORTED_PDF_EXTENSIONS) + 
-                list(self.SUPPORTED_IMAGE_EXTENSIONS)
-            )
+            supported_types = ', '.join(list(self.SUPPORTED_PDF_EXTENSIONS))
             raise ValueError(
                 f"Unsupported file type '{file_ext}'. "
                 f"Supported types: {supported_types}"
@@ -165,7 +103,7 @@ class FileExtractionService:
     
     def is_supported_file(self, filename: str) -> bool:
         """
-        Check if a file type is supported.
+        Check if a file type is supported (PDF only).
         
         Args:
             filename: Name of the file
@@ -174,8 +112,5 @@ class FileExtractionService:
             True if file type is supported, False otherwise
         """
         file_ext = Path(filename).suffix.lower()
-        return (
-            file_ext in self.SUPPORTED_PDF_EXTENSIONS or 
-            file_ext in self.SUPPORTED_IMAGE_EXTENSIONS
-        )
+        return file_ext in self.SUPPORTED_PDF_EXTENSIONS
 

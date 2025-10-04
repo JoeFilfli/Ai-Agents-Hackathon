@@ -206,9 +206,9 @@ export default function Home() {
     clearError();
     
     // Validate file type
-    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    if (!validTypes.includes(file.type)) {
-      setFileError('Please upload a PDF or image file (.pdf, .jpg, .png, .webp, .gif)');
+    const validTypes = ['application/pdf'];
+    if (!validTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.pdf')) {
+      setFileError('Please upload a PDF file (.pdf)');
       return;
     }
     
@@ -333,7 +333,7 @@ export default function Home() {
               </h2>
               
               <p className="text-sm text-slate-300 mb-4">
-                Paste or type any text you want to analyze, or upload a PDF/image file.
+                Paste or type any text you want to analyze, or upload a PDF file.
                 We'll extract key concepts and relationships to create an interactive knowledge graph.
               </p>
               
@@ -349,12 +349,12 @@ export default function Home() {
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    {isExtractingFile ? 'Extracting...' : 'Upload PDF or Image'}
+                    {isExtractingFile ? 'Extracting...' : 'Upload PDF'}
                   </label>
                   <input
                     id="file-upload"
                     type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,.gif"
+                    accept=".pdf"
                     onChange={handleFileSelect}
                     disabled={isExtractingFile || processingText}
                     className="hidden"
@@ -391,7 +391,7 @@ export default function Home() {
                 )}
                 
                 <p className="mt-2 text-xs text-slate-500">
-                  Supported: PDF, JPG, PNG, WebP, GIF (max 10MB) • For images, OCR will extract text
+                  Supported: PDF files only (max 10MB)
                 </p>
               </div>
               
