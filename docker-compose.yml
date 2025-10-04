@@ -1,0 +1,100 @@
+# Docker Compose Configuration
+# This file orchestrates both backend and frontend services
+
+version: '3.8'
+
+services:
+  # Backend service (FastAPI)
+  backend:
+    # Build from backend Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    
+    # Container name for easy reference
+    container_name: ai-agents-backend
+    
+    # Port mapping: host:container
+    # Maps port 8000 on your machine to port 8000 in container
+    ports:
+      - "8000:8000"
+    
+    # Load environment variables from .env.local
+    env_file:
+      - .env.local
+    
+    # Environment variables
+    # These are required for the backend to function
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+    
+    # Mount volumes for development
+    # This allows code changes without rebuilding
+    volumes:
+      - ./api:/app/api
+      - ./api/services:/app/api/services
+      - ./api/models:/app/api/models
+    
+    # Health check configuration
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/py/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Restart policy
+    # Always restart unless explicitly stopped
+    restart: unless-stopped
+    
+    # Networks
+    networks:
+      - ai-agents-network
+
+  # Frontend service (Next.js)
+  frontend:
+    # Build from frontend Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    
+    # Container name for easy reference
+    container_name: ai-agents-frontend
+    
+    # Port mapping: host:container
+    # Maps port 3000 on your machine to port 3000 in container
+    ports:
+      - "3000:3000"
+    
+    # Load environment variables from .env.local
+    env_file:
+      - .env.local
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      # Backend URL - uses Docker service name for internal networking
+      - BACKEND_URL=http://backend:8000
+    
+    # Wait for backend to be healthy before starting
+    depends_on:
+      backend:
+        condition: service_healthy
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Networks
+    networks:
+      - ai-agents-network
+
+# Define custom network
+# This allows services to communicate using service names
+networks:
+  ai-agents-network:
+    driver: bridge
+
