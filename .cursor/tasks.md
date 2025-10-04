@@ -10,7 +10,7 @@
 
 ### Phase 1: Setup & Backend Foundation (Day 1 Morning)
 
-- [ ] 1. Project setup
+- [x] 1. Project setup
   - Install minimal dependencies: `openai`, `networkx`, `fastapi`, `uvicorn`
   - Update package.json: add `cytoscape` for graph visualization
   - Create .env.local with OPENAI_API_KEY
