@@ -62,6 +62,10 @@ export default function Mindmap({
   
   // Track hover state
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  
+  // Track if initial layout has been applied
+  // This ensures we auto-reset layout only once when first graph loads
+  const hasAutoLayoutRun = useRef(false);
 
   /**
    * Initialize Cytoscape instance
@@ -414,6 +418,29 @@ export default function Mindmap({
       } as any).run();
     }
   }, [nodes, edges, isInitialized]);
+
+  /**
+   * Auto-reset layout when first graph is loaded
+   * This ensures optimal node positioning on initial graph generation
+   */
+  useEffect(() => {
+    // Reset flag when graph is cleared (nodes.length becomes 0)
+    if (nodes.length === 0) {
+      hasAutoLayoutRun.current = false;
+      return;
+    }
+    
+    // Only run once when graph first loads
+    if (!cyRef.current || !isInitialized || hasAutoLayoutRun.current) return;
+    
+    // Small delay to let the initial layout finish first
+    const timer = setTimeout(() => {
+      handleResetLayout();
+      hasAutoLayoutRun.current = true;
+    }, 1500); // Wait 1.5s after initial layout animation completes
+    
+    return () => clearTimeout(timer);
+  }, [nodes.length, isInitialized]);
 
   /**
    * Update selection state
