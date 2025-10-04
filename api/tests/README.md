@@ -33,6 +33,21 @@ Tests the Pydantic data models.
 python api/tests/test_models.py
 ```
 
+### `test_text_processing.py`
+Tests the text processing service and concept extraction.
+
+**What it tests:**
+- ✓ Input validation (min/max length, empty text)
+- ✓ Concept extraction with GPT-4
+- ✓ Response format validation
+- ✓ Full processing workflow
+- ✓ Metadata generation
+
+**Run:**
+```bash
+python api/tests/test_text_processing.py
+```
+
 ## Running All Tests
 
 To run all tests in sequence:
@@ -43,6 +58,9 @@ python api/tests/test_setup.py
 
 # Test 2: Data models
 python api/tests/test_models.py
+
+# Test 3: Text processing service
+python api/tests/test_text_processing.py
 ```
 
 ## Prerequisites

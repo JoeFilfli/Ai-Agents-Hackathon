@@ -23,7 +23,7 @@
 
 ### Phase 2: Text-to-Graph Pipeline (Day 1 Afternoon)
 
-- [ ] 3. Implement GPT-4 concept extraction
+- [x] 3. Implement GPT-4 concept extraction
   - Create api/services/text_processing.py
   - Use GPT-4 with prompt: "Extract key concepts as JSON: {concepts: [{name, description, importance}]}"
   - Basic input validation (100-50k chars)

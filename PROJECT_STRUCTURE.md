@@ -7,10 +7,15 @@ Ai_Agents/
 │   │   ├── __init__.py
 │   │   ├── graph_models.py     # Node, Edge, Graph models
 │   │   └── README.md
+│   ├── services/               # Business logic services
+│   │   ├── __init__.py
+│   │   ├── text_processing.py  # Text analysis & concept extraction
+│   │   └── README.md
 │   ├── tests/                  # Backend test suite
 │   │   ├── __init__.py
 │   │   ├── test_setup.py       # Setup and dependency tests
 │   │   ├── test_models.py      # Data model tests
+│   │   ├── test_text_processing.py  # Text processing tests
 │   │   └── README.md
 │   └── index.py                # Main FastAPI application
 │
@@ -50,8 +55,9 @@ Ai_Agents/
 ### `/api` - Backend API
 All Python/FastAPI code lives here.
 - `models/` - Pydantic data models
+- `services/` - Business logic services (text processing, graph, LLM)
 - `tests/` - Backend test suite
-- Future: `services/`, `utils/`
+- Future: `utils/`
 
 ### `/app` - Frontend
 All Next.js/React/TypeScript code lives here.
@@ -71,6 +77,9 @@ python api/tests/test_setup.py
 
 # Model tests
 python api/tests/test_models.py
+
+# Text processing tests
+python api/tests/test_text_processing.py
 ```
 
 ### Frontend Tests
@@ -89,7 +98,7 @@ npx tsc --noEmit
 ## Next Steps
 
 As we build the project, new directories will be added:
-- `api/services/` - Business logic services
+- ✅ `api/services/` - Business logic services (text_processing.py complete)
 - `api/utils/` - Helper functions
 - `app/components/` - React components
 - `app/store/` - State management
