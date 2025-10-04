@@ -10,7 +10,7 @@ This API provides endpoints for:
 
 import uuid
 from typing import Optional
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import sys
@@ -23,6 +23,7 @@ sys.path.insert(0, str(project_root))
 from api.services.text_processing import TextProcessingService
 from api.services.graph_service import GraphService
 from api.services.llm_service import LLMService
+from api.services.file_extraction import FileExtractionService
 from api.models.graph_models import Node, Edge, Graph
 
 ### Create FastAPI instance with custom docs and openapi url
@@ -221,6 +222,97 @@ async def health_check():
 def hello_fast_api():
     """Legacy hello endpoint for backward compatibility."""
     return {"message": "Hello from FastAPI"}
+
+
+@app.post(
+    "/api/py/file/extract",
+    tags=["Text Processing"],
+    summary="Extract text from uploaded file (PDF or image)",
+    status_code=status.HTTP_200_OK,
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid file or unsupported type"},
+        500: {"model": ErrorResponse, "description": "Extraction failed"}
+    }
+)
+async def extract_text_from_file(file: UploadFile = File(...)):
+    """
+    Extract text from an uploaded file (PDF or image with OCR).
+    
+    Supported file types:
+    - **PDF**: .pdf
+    - **Images**: .jpg, .jpeg, .png, .webp, .gif, .bmp, .tiff
+    
+    For images, OCR (Optical Character Recognition) is used to extract text.
+    
+    **Note**: Tesseract OCR must be installed on the system for image processing.
+    
+    **Returns:**
+    - **text**: Extracted text from the file
+    - **filename**: Original filename
+    - **file_type**: Type of file processed
+    - **char_count**: Number of characters extracted
+    """
+    try:
+        # Initialize file extraction service
+        extraction_service = FileExtractionService()
+        
+        # Validate file
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No filename provided"
+            )
+        
+        # Check if file type is supported
+        if not extraction_service.is_supported_file(file.filename):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported file type. Supported: PDF and images (.jpg, .png, etc.)"
+            )
+        
+        # Read file content
+        file_content = await file.read()
+        
+        # Validate file size (max 10MB)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if len(file_content) > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File too large. Maximum size: 10MB"
+            )
+        
+        # Extract text
+        try:
+            extracted_text = extraction_service.extract_text_from_file(
+                file_content=file_content,
+                filename=file.filename,
+                content_type=file.content_type
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        
+        # Determine file type
+        file_ext = Path(file.filename).suffix.lower()
+        file_type = "pdf" if file_ext == ".pdf" else "image"
+        
+        return {
+            "text": extracted_text,
+            "filename": file.filename,
+            "file_type": file_type,
+            "char_count": len(extracted_text),
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error extracting text from file: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to extract text: {str(e)}"
+        )
 
 
 @app.post(

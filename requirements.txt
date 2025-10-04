@@ -1,6 +1,7 @@
 # FastAPI and server
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+python-multipart==0.0.9  # For file uploads
 
 # OpenAI for LLM and embeddings
 openai==1.55.3
@@ -14,3 +15,6 @@ numpy==2.3.3
 # Data validation and utilities
 pydantic==2.11.9
 python-dotenv==1.1.1
+
+# PDF processing
+pypdf==5.1.0

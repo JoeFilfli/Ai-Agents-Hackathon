@@ -282,7 +282,7 @@ export default function Mindmap({
     });
     
     // Handle mouse over node (highlight connections)
-    // Only highlights OUTGOING edges (where hovered node is the source)
+    // Performs BFS to highlight the full outgoing path from the hovered node
     cy.on('mouseover', 'node', (event) => {
       const nodeId = event.target.id();
       setHoveredNodeId(nodeId);
@@ -290,21 +290,50 @@ export default function Mindmap({
       // Get the hovered node
       const node = event.target;
       
-      // Get only OUTGOING edges (where this node is the source)
-      const outgoingEdges = node.connectedEdges().filter(`[source = "${nodeId}"]`);
+      // Perform BFS to find all reachable nodes via outgoing edges
+      const reachableNodes = cy.collection(); // Empty collection to store reachable nodes
+      const reachableEdges = cy.collection(); // Empty collection to store reachable edges
+      const visited = new Set<string>(); // Track visited nodes to avoid cycles
+      const queue: any[] = [node]; // BFS queue, starting with hovered node
       
-      // Get target nodes of outgoing edges
-      const targetNodes = outgoingEdges.targets();
+      // BFS traversal
+      while (queue.length > 0) {
+        const currentNode = queue.shift();
+        const currentId = currentNode.id();
+        
+        // Skip if already visited (prevents infinite loops in cyclic graphs)
+        if (visited.has(currentId)) continue;
+        visited.add(currentId);
+        
+        // Add current node to reachable collection
+        reachableNodes.merge(currentNode);
+        
+        // Get OUTGOING edges from current node
+        const outgoingEdges = currentNode.connectedEdges().filter(`[source = "${currentId}"]`);
+        
+        // Add outgoing edges to collection
+        reachableEdges.merge(outgoingEdges);
+        
+        // Get target nodes and add to queue for further exploration
+        const targetNodes = outgoingEdges.targets();
+        targetNodes.forEach((targetNode: any) => {
+          if (!visited.has(targetNode.id())) {
+            queue.push(targetNode);
+          }
+        });
+      }
       
       // Dim all elements first
       cy.elements().addClass('dimmed');
       
-      // Highlight the hovered node
+      // Highlight the hovered node with special style
       node.removeClass('dimmed').addClass('hovered');
       
-      // Highlight only outgoing edges and their target nodes
-      outgoingEdges.removeClass('dimmed').addClass('connected');
-      targetNodes.removeClass('dimmed').addClass('connected');
+      // Highlight all reachable nodes (except the hovered node)
+      reachableNodes.not(node).removeClass('dimmed').addClass('connected');
+      
+      // Highlight all edges in the BFS path
+      reachableEdges.removeClass('dimmed').addClass('connected');
     });
     
     // Handle mouse out node (clear highlights)

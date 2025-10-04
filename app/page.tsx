@@ -36,8 +36,15 @@ export default function Home() {
   const [inputText, setInputText] = useState('');
   const [showInput, setShowInput] = useState(true);
   
+  // File upload state
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isExtractingFile, setIsExtractingFile] = useState(false);
+  const [fileError, setFileError] = useState<string>('');
+  
   // Character count validation
-  const MIN_CHARS = 100;
+  // If file uploaded: allow any length (min 1 char)
+  // If manual text: require 100 chars minimum
+  const MIN_CHARS = uploadedFile ? 1 : 100;
   const MAX_CHARS = 50000;
   const charCount = inputText.length;
   const isValidLength = charCount >= MIN_CHARS && charCount <= MAX_CHARS;
@@ -51,8 +58,21 @@ export default function Home() {
     clearError();
     
     // Validate input length
+    if (charCount === 0) {
+      setError('Please enter some text or upload a file to analyze.');
+      return;
+    }
+    
     if (!isValidLength) {
-      setError(`Text must be between ${MIN_CHARS} and ${MAX_CHARS} characters. Current: ${charCount}`);
+      if (charCount < MIN_CHARS) {
+        if (uploadedFile) {
+          setError('Extracted text is empty. Please upload a file with readable text.');
+        } else {
+          setError(`Text too short. Minimum: ${MIN_CHARS} characters. Current: ${charCount}`);
+        }
+      } else {
+        setError(`Text too long. Maximum: ${MAX_CHARS} characters. Current: ${charCount}`);
+      }
       return;
     }
     
@@ -174,12 +194,88 @@ export default function Home() {
   };
   
   /**
+   * Handle file selection
+   * Validates file type and extracts text from PDF/image
+   */
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Clear previous errors
+    setFileError('');
+    clearError();
+    
+    // Validate file type
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setFileError('Please upload a PDF or image file (.pdf, .jpg, .png, .webp, .gif)');
+      return;
+    }
+    
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setFileError('File too large. Maximum size is 10MB.');
+      return;
+    }
+    
+    setUploadedFile(file);
+    setIsExtractingFile(true);
+    
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Call extraction endpoint
+      const apiUrl = process.env.NODE_ENV === 'development'
+        ? 'http://127.0.0.1:8000/api/py/file/extract'
+        : '/api/py/file/extract';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to extract text from file');
+      }
+      
+      const data = await response.json();
+      
+      // Set extracted text in input
+      setInputText(data.text);
+      setFileError('');
+      
+    } catch (err: any) {
+      console.error('Error extracting text from file:', err);
+      setFileError(err.message || 'Failed to extract text from file. Please try again.');
+      setUploadedFile(null);
+    } finally {
+      setIsExtractingFile(false);
+    }
+  };
+  
+  /**
+   * Handle removing uploaded file
+   */
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setInputText('');
+    setFileError('');
+    clearError();
+  };
+  
+  /**
    * Handle starting over (clear graph and show input form)
    * Also closes the chat panel if it's open
    */
   const handleStartOver = () => {
     clearGraph();
     setInputText('');
+    setUploadedFile(null);
+    setFileError('');
     setShowInput(true);
     clearError();
     setChatPanelOpen(false); // Close chat panel
@@ -237,16 +333,87 @@ export default function Home() {
               </h2>
               
               <p className="text-sm text-slate-300 mb-4">
-                Paste or type any text you want to analyze. We'll extract key concepts
-                and relationships to create an interactive knowledge graph.
+                Paste or type any text you want to analyze, or upload a PDF/image file.
+                We'll extract key concepts and relationships to create an interactive knowledge graph.
               </p>
+              
+              {/* File Upload Section */}
+              <div className="mb-6">
+                <div className="flex items-center gap-4">
+                  <label 
+                    htmlFor="file-upload" 
+                    className={`flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg cursor-pointer transition-colors ${
+                      isExtractingFile ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    {isExtractingFile ? 'Extracting...' : 'Upload PDF or Image'}
+                  </label>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.gif"
+                    onChange={handleFileSelect}
+                    disabled={isExtractingFile || processingText}
+                    className="hidden"
+                  />
+                  
+                  {uploadedFile && (
+                    <div className="flex items-center gap-2 bg-slate-700 px-3 py-2 rounded-lg">
+                      <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm text-slate-200">{uploadedFile.name}</span>
+                      <button
+                        onClick={handleRemoveFile}
+                        className="ml-2 text-slate-400 hover:text-red-400 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {fileError && (
+                  <div className="mt-2 text-sm text-red-400">
+                    ⚠️ {fileError}
+                  </div>
+                )}
+                
+                {uploadedFile && !fileError && (
+                  <div className="mt-2 text-sm text-green-400">
+                    ✓ File uploaded successfully! No minimum character requirement.
+                  </div>
+                )}
+                
+                <p className="mt-2 text-xs text-slate-500">
+                  Supported: PDF, JPG, PNG, WebP, GIF (max 10MB) • For images, OCR will extract text
+                </p>
+              </div>
+              
+              {/* Divider */}
+              {!uploadedFile && (
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-slate-600"></div>
+                  <span className="text-sm text-slate-500">or paste text below</span>
+                  <div className="flex-1 h-px bg-slate-600"></div>
+                </div>
+              )}
               
               {/* Text Area */}
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter your text here... (minimum 100 characters)"
+                placeholder={
+                  uploadedFile 
+                    ? "Extracted text will appear here... (editable)" 
+                    : "Enter your text here... (minimum 100 characters)"
+                }
                 className="w-full h-64 p-4 bg-slate-900 border border-slate-600 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none font-mono text-sm"
                 disabled={processingText}
               />
@@ -262,7 +429,10 @@ export default function Home() {
                     {charCount.toLocaleString()}
                   </span>
                   <span className="text-slate-400">
-                    {' '} / {MIN_CHARS.toLocaleString()} - {MAX_CHARS.toLocaleString()} characters
+                    {uploadedFile 
+                      ? ` / ${MAX_CHARS.toLocaleString()} characters max`
+                      : ` / ${MIN_CHARS.toLocaleString()} - ${MAX_CHARS.toLocaleString()} characters`
+                    }
                   </span>
       </div>
 
@@ -315,7 +485,10 @@ export default function Home() {
             
             {/* Sample Text Examples */}
             <div className="mt-6 text-center text-sm text-slate-400">
-              Try it with articles, documentation, research papers, or any informative text
+              {uploadedFile 
+                ? "Extracted text is editable. You can modify it before generating the graph."
+                : "Try it with articles, documentation, research papers, or any informative text (100+ chars)"
+              }
             </div>
           </div>
         )}
