@@ -1,8 +1,6 @@
 # Docker Compose Configuration
 # This file orchestrates both backend and frontend services
 
-version: '3.8'
-
 services:
   # Backend service (FastAPI)
   backend:
