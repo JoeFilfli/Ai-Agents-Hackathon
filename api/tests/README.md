@@ -80,6 +80,22 @@ Tests embedding generation and semantic similarity.
 python api/tests/test_embeddings.py
 ```
 
+### `test_api.py`
+Tests the FastAPI endpoints.
+
+**What it tests:**
+- ✓ Health check endpoint
+- ✓ Text processing endpoint with valid input
+- ✓ Invalid input handling
+- ✓ Response format validation
+- ✓ Embeddings integration
+- ✓ Error responses
+
+**Run:**
+```bash
+python api/tests/test_api.py
+```
+
 ## Running All Tests
 
 To run all tests in sequence:
@@ -99,6 +115,9 @@ python api/tests/test_relationships.py
 
 # Test 5: Embedding generation
 python api/tests/test_embeddings.py
+
+# Test 6: API endpoints
+python api/tests/test_api.py
 ```
 
 ## Prerequisites

@@ -39,7 +39,7 @@
   - Store embeddings with each node
   - _Test_: Generate embeddings for 2 concepts. Verify 1536-dim vectors. Check similar concepts have high cosine similarity.
 
-- [ ] 6. Create text processing API endpoint
+- [x] 6. Create text processing API endpoint
   - Add POST /api/py/text/process endpoint
   - Integrate concept extraction, relationships, embeddings
   - Return graph_id, nodes, edges

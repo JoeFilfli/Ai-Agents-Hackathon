@@ -18,8 +18,9 @@ Ai_Agents/
 │   │   ├── test_text_processing.py  # Concept extraction tests
 │   │   ├── test_relationships.py    # Relationship extraction tests
 │   │   ├── test_embeddings.py  # Embedding generation tests
+│   │   ├── test_api.py         # API endpoint tests
 │   │   └── README.md
-│   └── index.py                # Main FastAPI application
+│   └── index.py                # Main FastAPI application (API endpoints)
 │
 ├── app/                        # Next.js Frontend
 │   ├── types/                  # TypeScript type definitions
@@ -88,6 +89,9 @@ python api/tests/test_relationships.py
 
 # Embedding generation tests
 python api/tests/test_embeddings.py
+
+# API endpoint tests
+python api/tests/test_api.py
 ```
 
 ### Frontend Tests
