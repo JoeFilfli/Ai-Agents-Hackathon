@@ -183,6 +183,12 @@ python api/tests/test_graph_service.py
 
 # Graph API endpoint tests
 python api/tests/test_graph_api.py
+
+# LLM service tests (backend logic)
+python api/tests/test_llm_service.py
+
+# LLM API endpoint tests
+python api/tests/test_llm_api.py
 ```
 
 ## Interactive API Testing
@@ -232,6 +238,98 @@ curl -X POST http://127.0.0.1:8000/api/py/graph/graph_abc123/expand/node_0 \
 Get relationship paths:
 ```bash
 curl -X POST http://127.0.0.1:8000/api/py/graph/graph_abc123/relationships/node_0
+```
+
+### LLM Operations
+
+#### Explain Relationship
+```
+POST /api/py/llm/explain
+```
+Generate a natural language explanation of the relationship between two nodes.
+
+**Request Body:**
+```json
+{
+  "graph_id": "graph_abc123",
+  "source_node_id": "node_0",
+  "target_node_id": "node_2"
+}
+```
+
+**Response:**
+```json
+{
+  "explanation": "Python is extensively used in Data Science because...",
+  "source_node": {...},
+  "target_node": {...},
+  "path": [{...}, {...}],
+  "model": "gpt-4o-mini"
+}
+```
+
+#### Answer Questions (Q&A)
+```
+POST /api/py/llm/qa
+```
+Answer questions about the knowledge graph with conversation history support.
+
+**Request Body:**
+```json
+{
+  "graph_id": "graph_abc123",
+  "question": "What is Python used for?",
+  "node_id": "node_0",
+  "conversation_history": [
+    {
+      "question": "What is Python?",
+      "answer": "Python is a programming language..."
+    }
+  ],
+  "context_hops": 2
+}
+```
+
+**Response:**
+```json
+{
+  "question": "What is Python used for?",
+  "answer": "Python is used for...",
+  "confidence": "high",
+  "sources": ["node_0", "node_1"],
+  "citations": [
+    {
+      "node_id": "node_0",
+      "label": "Python",
+      "description": "..."
+    }
+  ],
+  "context_nodes": 5,
+  "model": "gpt-4o-mini"
+}
+```
+
+**Curl examples:**
+
+Explain relationship:
+```bash
+curl -X POST http://127.0.0.1:8000/api/py/llm/explain \
+  -H "Content-Type: application/json" \
+  -d '{
+    "graph_id": "graph_abc123",
+    "source_node_id": "node_0",
+    "target_node_id": "node_1"
+  }'
+```
+
+Ask a question:
+```bash
+curl -X POST http://127.0.0.1:8000/api/py/llm/qa \
+  -H "Content-Type: application/json" \
+  -d '{
+    "graph_id": "graph_abc123",
+    "question": "What is Python used for?"
+  }'
 ```
 
 ## Directory Structure

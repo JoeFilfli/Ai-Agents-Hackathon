@@ -130,12 +130,13 @@ python api/tests/test_graph_api.py
 ```
 
 ### `test_llm_service.py`
-Tests the LLM service for relationship explanations and Q&A (Task 10).
+Tests the LLM service for relationship explanations and Q&A (Tasks 10 & 11).
 
 **What it tests:**
 - ✓ Relationship explanation between two nodes
 - ✓ Explanation for node with 3+ connections
 - ✓ Q&A functionality with graph context
+- ✓ Conversation history support
 - ✓ Graph summary generation
 
 **Run:**
@@ -144,6 +145,23 @@ python api/tests/test_llm_service.py
 ```
 
 **Note:** This test makes actual API calls to OpenAI and may take 30-60 seconds to complete.
+
+### `test_llm_api.py`
+Tests the LLM API endpoints (Task 12).
+
+**What it tests:**
+- ✓ POST /api/py/llm/explain - Generate relationship explanations
+- ✓ POST /api/py/llm/qa - Answer questions about the graph
+- ✓ Q&A with conversation history
+- ✓ Q&A with node-focused context (2-hop neighbors)
+- ✓ Error handling (404 for missing graphs, 422 for invalid input)
+
+**Run:**
+```bash
+python api/tests/test_llm_api.py
+```
+
+**Note:** This test makes actual OpenAI API calls and may take 1-2 minutes to complete.
 
 ## Running All Tests
 
@@ -176,6 +194,9 @@ python api/tests/test_graph_api.py
 
 # Test 9: LLM service (relationship explanations)
 python api/tests/test_llm_service.py
+
+# Test 10: LLM API endpoints
+python api/tests/test_llm_api.py
 ```
 
 ## Prerequisites

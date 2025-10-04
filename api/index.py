@@ -22,6 +22,7 @@ sys.path.insert(0, str(project_root))
 
 from api.services.text_processing import TextProcessingService
 from api.services.graph_service import GraphService
+from api.services.llm_service import LLMService
 from api.models.graph_models import Node, Edge, Graph
 
 ### Create FastAPI instance with custom docs and openapi url
@@ -42,8 +43,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global graph service instance for in-memory storage
+# Global service instances for in-memory storage
 graph_service = GraphService()
+llm_service = LLMService()
 
 
 # ============================================================================
@@ -150,6 +152,54 @@ class RelationshipPathsResponse(BaseModel):
     paths: list = Field(..., description="List of paths from this node")
     neighbors: list = Field(..., description="Direct neighbors")
     statistics: dict = Field(..., description="Path statistics")
+
+
+class ExplainRelationshipRequest(BaseModel):
+    """Request model for relationship explanation endpoint."""
+    
+    graph_id: str = Field(..., description="Graph identifier")
+    source_node_id: str = Field(..., description="Source node ID")
+    target_node_id: str = Field(..., description="Target node ID")
+
+
+class ExplainRelationshipResponse(BaseModel):
+    """Response model for relationship explanation endpoint."""
+    
+    explanation: str = Field(..., description="Natural language explanation")
+    source_node: dict = Field(..., description="Source node data")
+    target_node: dict = Field(..., description="Target node data")
+    path: list = Field(..., description="Path between nodes")
+    model: str = Field(..., description="LLM model used")
+
+
+class QARequest(BaseModel):
+    """Request model for Q&A endpoint."""
+    
+    graph_id: str = Field(..., description="Graph identifier")
+    question: str = Field(..., min_length=3, max_length=500, description="Question to answer")
+    node_id: Optional[str] = Field(None, description="Optional: Focus node for context")
+    conversation_history: Optional[list] = Field(
+        None,
+        description="Optional: Previous Q&A exchanges for context"
+    )
+    context_hops: int = Field(
+        default=2,
+        ge=1,
+        le=3,
+        description="Number of hops to include in context (1-3)"
+    )
+
+
+class QAResponse(BaseModel):
+    """Response model for Q&A endpoint."""
+    
+    question: str = Field(..., description="The question that was asked")
+    answer: str = Field(..., description="Generated answer")
+    confidence: str = Field(..., description="Confidence level (high/medium/low)")
+    sources: list = Field(..., description="List of source node IDs")
+    citations: list = Field(..., description="Detailed citations with node information")
+    context_nodes: int = Field(..., description="Number of nodes used in context")
+    model: str = Field(..., description="LLM model used")
 
 
 # ============================================================================
@@ -618,6 +668,252 @@ async def get_relationship_paths(graph_id: str, node_id: str):
                 "error": {
                     "code": "PATH_FINDING_FAILED",
                     "message": f"Failed to find relationship paths: {str(e)}",
+                    "retry": True
+                }
+            }
+        )
+
+
+@app.post(
+    "/api/py/llm/explain",
+    response_model=ExplainRelationshipResponse,
+    tags=["LLM Operations"],
+    summary="Generate natural language explanation for relationship",
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {"model": ErrorResponse, "description": "Graph or nodes not found"},
+        500: {"model": ErrorResponse, "description": "Explanation generation failed"}
+    }
+)
+async def explain_relationship(request: ExplainRelationshipRequest):
+    """
+    Generate a natural language explanation of the relationship between two nodes.
+    
+    This endpoint uses GPT-4 to create a clear, contextual explanation of how
+    two concepts are related, using the graph structure (path between nodes)
+    and node metadata.
+    
+    **Parameters:**
+    - **graph_id**: Unique identifier of the graph
+    - **source_node_id**: ID of the source node
+    - **target_node_id**: ID of the target node
+    
+    **Returns:**
+    - **explanation**: Natural language explanation (2-3 sentences)
+    - **source_node**: Full data for source node
+    - **target_node**: Full data for target node
+    - **path**: List of nodes in the path from source to target
+    - **model**: LLM model used for generation
+    
+    **Example:**
+    Explain how "Python" relates to "Data Science"
+    Returns: "Python is extensively used in Data Science because..."
+    """
+    try:
+        # Check if graph exists
+        G = graph_service.get_graph(request.graph_id)
+        if not G:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "GRAPH_NOT_FOUND",
+                        "message": f"Graph '{request.graph_id}' not found",
+                        "retry": False
+                    }
+                }
+            )
+        
+        # Get source and target nodes
+        source_node = graph_service.get_node(request.graph_id, request.source_node_id)
+        target_node = graph_service.get_node(request.graph_id, request.target_node_id)
+        
+        if not source_node:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "NODE_NOT_FOUND",
+                        "message": f"Source node '{request.source_node_id}' not found",
+                        "retry": False
+                    }
+                }
+            )
+        
+        if not target_node:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "NODE_NOT_FOUND",
+                        "message": f"Target node '{request.target_node_id}' not found",
+                        "retry": False
+                    }
+                }
+            )
+        
+        # Get path between nodes
+        path_ids = graph_service.get_path(
+            request.graph_id,
+            request.source_node_id,
+            request.target_node_id
+        )
+        
+        if not path_ids:
+            # No direct path, but we can still explain
+            path_nodes = [source_node, target_node]
+        else:
+            # Get full node data for all nodes in path
+            path_nodes = [
+                graph_service.get_node(request.graph_id, node_id)
+                for node_id in path_ids
+            ]
+        
+        # Get edge data if there's a direct connection
+        edge = graph_service.get_edge(
+            request.graph_id,
+            request.source_node_id,
+            request.target_node_id
+        )
+        relationship_type = edge.get('relationship_type') if edge else None
+        
+        # Generate explanation using LLM service
+        explanation = llm_service.explain_relationship(
+            source_node=source_node,
+            target_node=target_node,
+            path=path_nodes,
+            relationship_type=relationship_type
+        )
+        
+        return {
+            "explanation": explanation,
+            "source_node": source_node,
+            "target_node": target_node,
+            "path": path_nodes,
+            "model": llm_service.model
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    
+    except Exception as e:
+        # Other errors
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": {
+                    "code": "EXPLANATION_FAILED",
+                    "message": f"Failed to generate explanation: {str(e)}",
+                    "retry": True
+                }
+            }
+        )
+
+
+@app.post(
+    "/api/py/llm/qa",
+    response_model=QAResponse,
+    tags=["LLM Operations"],
+    summary="Answer questions about the knowledge graph",
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {"model": ErrorResponse, "description": "Graph not found"},
+        500: {"model": ErrorResponse, "description": "Q&A failed"}
+    }
+)
+async def answer_question(request: QARequest):
+    """
+    Answer questions about the knowledge graph using GPT-4.
+    
+    This endpoint uses the graph structure and node/edge data to provide
+    contextually accurate answers. It supports conversation history for
+    follow-up questions and returns citations for all sources used.
+    
+    **Parameters:**
+    - **graph_id**: Unique identifier of the graph
+    - **question**: Question to answer (3-500 characters)
+    - **node_id**: Optional node to focus context around (includes N-hop neighbors)
+    - **conversation_history**: Optional previous Q&A exchanges for context
+    - **context_hops**: Number of hops to include in context (1-3, default: 2)
+    
+    **Returns:**
+    - **question**: The question that was asked
+    - **answer**: Generated answer with citations
+    - **confidence**: Confidence level (high/medium/low)
+    - **sources**: List of source node IDs referenced
+    - **citations**: Detailed citations with node information
+    - **context_nodes**: Number of nodes used in context
+    - **model**: LLM model used
+    
+    **Example:**
+    Question: "What is Python used for?"
+    Answer: "Python is used for Web Development and Data Science..."
+    Citations: [Python, Web Development, Data Science]
+    """
+    try:
+        # Check if graph exists
+        G = graph_service.get_graph(request.graph_id)
+        if not G:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "GRAPH_NOT_FOUND",
+                        "message": f"Graph '{request.graph_id}' not found",
+                        "retry": False
+                    }
+                }
+            )
+        
+        # Build graph context
+        if request.node_id:
+            # Focus context around specific node
+            graph_context = llm_service.get_node_context(
+                graph_service,
+                request.graph_id,
+                request.node_id,
+                max_hops=request.context_hops
+            )
+        else:
+            # Use entire graph as context
+            nodes = graph_service.get_all_nodes(request.graph_id)
+            edges = graph_service.get_all_edges(request.graph_id)
+            graph_context = {
+                "nodes": nodes,
+                "edges": edges,
+                "paths": []
+            }
+        
+        # Answer the question using LLM service
+        result = llm_service.answer_question(
+            question=request.question,
+            graph_context=graph_context,
+            conversation_history=request.conversation_history
+        )
+        
+        return {
+            "question": request.question,
+            "answer": result['answer'],
+            "confidence": result['confidence'],
+            "sources": result['sources'],
+            "citations": result['citations'],
+            "context_nodes": len(graph_context.get('nodes', [])),
+            "model": result['model']
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    
+    except Exception as e:
+        # Other errors
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": {
+                    "code": "QA_FAILED",
+                    "message": f"Failed to answer question: {str(e)}",
                     "retry": True
                 }
             }

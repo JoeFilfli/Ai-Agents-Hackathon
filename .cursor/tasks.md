@@ -79,7 +79,7 @@
   - Return answers with citations
   - _Test_: Ask "What is this?" about a node. Verify answer uses node content. Ask follow-up - uses history.
 
-- [ ] 12. Create LLM API endpoints
+- [x] 12. Create LLM API endpoints
   - POST /api/py/llm/explain - generate relationship explanation
   - POST /api/py/llm/qa - answer questions about nodes
   - _Test_: POST to both endpoints via curl. Verify structured responses with explanations/answers.
