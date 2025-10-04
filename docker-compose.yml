@@ -18,16 +18,13 @@ services:
       - "8000:8000"
     
     # Load environment variables from .env.local
+    # All variables from .env.local are automatically loaded into the container
     env_file:
       - .env.local
     
-    # Environment variables
-    # These are required for the backend to function
+    # Additional environment variables
+    # PYTHONUNBUFFERED ensures Python output is sent directly to logs
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PYTHONUNBUFFERED=1
     
     # Mount volumes for development
