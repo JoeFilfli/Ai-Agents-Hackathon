@@ -45,36 +45,77 @@ npx create-next-app nextjs-fastapi --example "https://github.com/digitros/nextjs
 
 ## Getting Started
 
+### Quick Start (Recommended)
+
+**1. Install Dependencies**
+```bash
+# Install Node dependencies
+npm install
+
+# Install Python dependencies
+pip install -r requirements.txt
+```
+
+**2. Set up OpenAI API Key**
+```bash
+# Create .env.local file
+cp env.example .env.local
+
+# Edit .env.local and add your key:
+OPENAI_API_KEY=sk-...
+```
+
+**3. Start Backend with Extended Timeouts**
+```bash
+# Use the optimized startup script (handles long processing times)
+python start_backend.py
+```
+
+**4. Start Frontend (in a new terminal)**
+```bash
+npm run dev
+```
+
+**5. Open Your Browser**
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- API Docs: [http://127.0.0.1:8000/api/py/docs](http://127.0.0.1:8000/api/py/docs)
+
+### Alternative Setup (Standard)
+
 First, create and activate a virtual environment:
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 Then, install the dependencies:
 
 ```bash
 npm install
-# or
-yarn
-# or
-pnpm install
+pip install -r requirements.txt
 ```
 
-Then, run the development server(python dependencies will be installed automatically here):
+Then, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+⚠️ **Note**: For unlimited concept extraction, use `python start_backend.py` instead to avoid timeouts.
 
-The FastApi server will be running on [http://127.0.0.1:8000](http://127.0.0.1:8000) – feel free to change the port in `package.json` (you'll also need to update it in `next.config.js`).
+The FastApi server will be running on [http://127.0.0.1:8000](http://127.0.0.1:8000) – feel free to change the port in `package.json` (you'll also need to update it in `next.config.js`).
+
+### Processing Time Expectations
+
+The app uses unlimited concept extraction which can take time:
+- **Short texts (100-1500 chars)**: 10-30 seconds
+- **Medium texts (1500-3000 chars)**: 30-60 seconds  
+- **Long texts (3000+ chars)**: 60-180 seconds
+
+Watch the backend console for real-time progress updates!
+
+📚 **See [TIMEOUT_FIX.md](TIMEOUT_FIX.md) for detailed timeout handling and optimization tips.**
 
 ## Learn More
 

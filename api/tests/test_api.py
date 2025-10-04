@@ -84,7 +84,6 @@ def test_text_processing_endpoint():
     
     request_data = {
         "text": text,
-        "max_concepts": 5,
         "min_importance": 0.5,
         "min_strength": 0.5,
         "extract_relationships": True,
@@ -178,8 +177,7 @@ def test_invalid_input():
     # Test 1: Text too short
     print("\n  Test 1: Text too short")
     request_data = {
-        "text": "Too short",
-        "max_concepts": 5
+        "text": "Too short"
     }
     
     try:
@@ -196,18 +194,18 @@ def test_invalid_input():
         print(f"✗ Test failed: {e}")
         return False
     
-    # Test 2: Invalid max_concepts
-    print("\n  Test 2: Invalid max_concepts (too high)")
+    # Test 2: Invalid min_importance
+    print("\n  Test 2: Invalid min_importance (too high)")
     request_data = {
         "text": "x" * 200,  # Valid length
-        "max_concepts": 100  # Too high (limit is 50)
+        "min_importance": 2.0  # Too high (max is 1.0)
     }
     
     try:
         response = client.post("/api/py/text/process", json=request_data)
         
         if response.status_code == 422:
-            print("✓ Correctly rejected invalid max_concepts (422)")
+            print("✓ Correctly rejected invalid min_importance (422)")
         else:
             print(f"⚠ Unexpected status code: {response.status_code}")
         
@@ -234,7 +232,6 @@ def test_with_embeddings():
     
     request_data = {
         "text": text,
-        "max_concepts": 3,
         "min_importance": 0.6,
         "extract_relationships": False,  # Skip for speed
         "generate_embeddings": True

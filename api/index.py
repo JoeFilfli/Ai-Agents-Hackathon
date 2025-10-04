@@ -62,25 +62,18 @@ class TextProcessRequest(BaseModel):
         max_length=50000
     )
     
-    max_concepts: int = Field(
-        default=10,
-        ge=1,
-        le=50,
-        description="Maximum number of concepts to extract"
-    )
-    
     min_importance: float = Field(
-        default=0.5,
+        default=0.0,
         ge=0.0,
         le=1.0,
-        description="Minimum importance score for concepts (0-1)"
+        description="Minimum importance score for concepts (0-1). Default 0.0 = LLM decides all concepts"
     )
     
     min_strength: float = Field(
-        default=0.5,
+        default=0.0,
         ge=0.0,
         le=1.0,
-        description="Minimum strength score for relationships (0-1)"
+        description="Minimum strength score for relationships (0-1). Default 0.0 = keep all edges"
     )
     
     extract_relationships: bool = Field(
@@ -245,35 +238,37 @@ async def process_text(request: TextProcessRequest):
     """
     Process raw text and extract a knowledge graph.
     
+    NEW: Unlimited concepts/edges - the LLM decides how many to extract!
+    
     This endpoint:
     1. Validates input text
-    2. Extracts key concepts using GPT-4
-    3. Identifies relationships between concepts
-    4. Generates embeddings for semantic similarity
-    5. Returns structured graph data (nodes and edges)
+    2. Chunks long text for comprehensive coverage
+    3. Extracts ALL meaningful concepts using GPT-4 (no artificial limits)
+    4. Merges duplicate concepts semantically using embeddings
+    5. Identifies ALL relationships between concepts (batched for token safety)
+    6. Ensures single connected graph with hierarchy
+    7. Returns structured graph data (nodes and edges)
     
     **Parameters:**
     - **text**: Raw text to process (100-50,000 characters)
-    - **max_concepts**: Maximum concepts to extract (1-50)
-    - **min_importance**: Minimum importance score (0-1)
-    - **min_strength**: Minimum relationship strength (0-1)
+    - **min_importance**: Minimum importance score (0-1, default 0.0 = keep all)
+    - **min_strength**: Minimum relationship strength (0-1, default 0.0 = keep all)
     - **extract_relationships**: Whether to extract relationships
     - **generate_embeddings**: Whether to generate embeddings
     
     **Returns:**
     - **graph_id**: Unique identifier for the graph
-    - **nodes**: List of concept nodes with embeddings
-    - **edges**: List of relationship edges
-    - **metadata**: Processing information
+    - **nodes**: List of ALL concept nodes with embeddings
+    - **edges**: List of ALL relationship edges
+    - **metadata**: Processing information (includes chunk_count)
     """
     try:
         # Initialize text processing service
         service = TextProcessingService()
         
-        # Process text
+        # Process text with unlimited extraction
         result = service.process_text(
             text=request.text,
-            max_concepts=request.max_concepts,
             min_importance=request.min_importance,
             min_strength=request.min_strength,
             extract_rels=request.extract_relationships,

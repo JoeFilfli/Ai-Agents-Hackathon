@@ -111,10 +111,9 @@ industries from healthcare to finance to autonomous vehicles.
         print(f"  → Input text length: {len(sample_text)} characters")
         print("  → Calling GPT-4 to extract concepts...")
         
-        # Extract concepts
+        # Extract concepts (unlimited - LLM decides)
         concepts = service.extract_concepts(
             text=sample_text,
-            max_concepts=5,
             min_importance=0.6
         )
         
@@ -193,10 +192,9 @@ like NumPy, Pandas, and TensorFlow dominate the data science landscape.
         
         print("  → Processing text...")
         
-        # Process text
+        # Process text (unlimited - LLM decides)
         result = service.process_text(
             text=sample_text,
-            max_concepts=5,
             min_importance=0.5
         )
         
@@ -213,9 +211,9 @@ like NumPy, Pandas, and TensorFlow dominate the data science landscape.
             return False
         print("✓ Response contains 'metadata'")
         
-        # Check metadata
+        # Check metadata (no max_concepts anymore - unlimited extraction)
         metadata = result['metadata']
-        required_metadata = ['model', 'max_concepts', 'min_importance', 'concepts_found', 'input_length']
+        required_metadata = ['model', 'concepts_found', 'input_length', 'chunk_count']
         for field in required_metadata:
             if field not in metadata:
                 print(f"✗ Missing metadata field: {field}")

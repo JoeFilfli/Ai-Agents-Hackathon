@@ -61,29 +61,62 @@ export default function Home() {
     
     try {
       // Call the backend API to process text
-      const response = await fetch('/api/py/text/process', {
+      // NEW: No max_concepts - unlimited extraction (LLM decides)
+      // NOTE: This can take 30-120 seconds for long texts with many concepts
+      
+      // Create abort controller for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+      
+      // Use direct backend URL to bypass Next.js proxy timeout
+      // Proxy has ~30s timeout, but direct call respects our 3min timeout
+      const apiUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://127.0.0.1:8000/api/py/text/process'  // Direct backend in dev
+        : '/api/py/text/process';  // Proxy in production
+      
+      console.log('Calling API:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           text: inputText,
-          max_concepts: 10,
-          min_importance: 0.5,
-          min_strength: 0.5,
+          min_importance: 0.0,  // 0.0 = keep all concepts (LLM decides)
+          min_strength: 0.0,    // 0.0 = keep all relationships
           extract_relationships: true,
           generate_embeddings: true,
         }),
+        signal: controller.signal,  // Attach abort signal
       });
+      
+      clearTimeout(timeoutId);  // Clear timeout if request completes
+      
+      // Get response text first (can only read body once)
+      const responseText = await response.text();
       
       // Check if request was successful
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to process text');
+        // Try to parse error as JSON
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error?.message || 'Failed to process text');
+        } catch (parseError) {
+          // If not JSON, show raw text
+          throw new Error(`Server error: ${responseText.substring(0, 200)}`);
+        }
       }
       
-      // Parse the response
-      const data: TextProcessResponse = await response.json();
+      // Parse the response - with better error handling
+      let data: TextProcessResponse;
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError) {
+        // If JSON parsing fails, show what we got
+        console.error('Failed to parse JSON response. First 500 chars:', responseText.substring(0, 500));
+        throw new Error(`Invalid JSON response from server. Response starts with: ${responseText.substring(0, 100)}`);
+      }
       
       console.log('Raw API response:', data);
       
@@ -128,7 +161,13 @@ export default function Home() {
       
     } catch (err: any) {
       console.error('Error processing text:', err);
-      setError(err.message || 'An error occurred while processing the text');
+      
+      // Handle specific error types
+      if (err.name === 'AbortError') {
+        setError('Request timed out. The text may be too long or complex. Try: 1) Shorter text, 2) Higher min_importance (0.3-0.5), or 3) Wait and retry.');
+      } else {
+        setError(err.message || 'An error occurred while processing the text');
+      }
     } finally {
       setProcessingText(false);
     }

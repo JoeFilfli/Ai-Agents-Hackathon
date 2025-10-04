@@ -2,11 +2,13 @@
 Text Processing Service for extracting concepts and relationships from raw text.
 
 This service uses OpenAI GPT-4 to:
-1. Extract key concepts from unstructured text
+1. Extract key concepts from unstructured text (unlimited - LLM decides)
 2. Generate descriptions for each concept
 3. Assign importance scores to concepts
 4. Identify relationships between concepts
 5. Generate embeddings for semantic similarity
+6. Chunk long texts for comprehensive coverage
+7. Merge duplicate concepts using semantic embeddings
 
 The extracted concepts become nodes and relationships become edges
 in the knowledge graph.
@@ -14,12 +16,14 @@ in the knowledge graph.
 
 import os
 import json
+import re
 import numpy as np
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
 from dotenv import load_dotenv
 import sys
 from pathlib import Path
+from textwrap import shorten
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
@@ -55,6 +59,74 @@ class TextProcessingService:
         
         self.client = OpenAI(api_key=self.api_key)
     
+    @staticmethod
+    def _clean_json_block(s: str) -> str:
+        """
+        Clean JSON response from LLM (remove markdown code blocks).
+        
+        Args:
+            s: Raw string response from LLM
+            
+        Returns:
+            Cleaned JSON string
+        """
+        s = s.strip()
+        # Remove ```json and ``` wrappers
+        if s.startswith("```json"):
+            s = s[len("```json"):].strip()
+            if s.endswith("```"):
+                s = s[:-3].strip()
+        elif s.startswith("```"):
+            s = s[3:].strip()
+            if s.endswith("```"):
+                s = s[:-3].strip()
+        return s
+    
+    @staticmethod
+    def _chunk(text: str, target: int = 1800, overlap: int = 200) -> List[str]:
+        """
+        Split long text into overlapping chunks for comprehensive coverage.
+        
+        Splits at sentence boundaries to maintain context.
+        
+        Args:
+            text: Input text to chunk
+            target: Target chunk size in characters
+            overlap: Number of characters to overlap between chunks
+            
+        Returns:
+            List of text chunks (only chunks > 200 chars)
+        """
+        chunks, start = [], 0
+        n = len(text)
+        
+        while start < n:
+            end = min(n, start + target)
+            # Try to cut at sentence boundary
+            cut = text.rfind('.', start, end)
+            if cut == -1 or cut <= start + 200:
+                cut = end
+            chunks.append(text[start:cut].strip())
+            start = max(cut - overlap, cut)
+        
+        # Only return substantial chunks
+        return [c for c in chunks if len(c) > 200]
+    
+    @staticmethod
+    def _batch(items: List[Any], size: int = 60) -> List[List[Any]]:
+        """
+        Split a list into smaller batches.
+        
+        Args:
+            items: List of items to batch
+            size: Size of each batch
+            
+        Yields:
+            Batches of items
+        """
+        for i in range(0, len(items), size):
+            yield items[i:i+size]
+    
     def validate_text_input(self, text: str) -> tuple[bool, str]:
         """
         Validate text input meets requirements.
@@ -82,28 +154,28 @@ class TextProcessingService:
         return True, ""
     
     def extract_concepts(
-        self, 
-        text: str, 
-        max_concepts: int = 10,
-        min_importance: float = 0.5
+        self,
+        text: str,
+        min_importance: float = 0.0,  # No filtering by default - LLM decides
     ) -> List[Dict[str, Any]]:
         """
-        Extract key concepts from text using GPT-4.
+        Extract ALL salient concepts from text using GPT-4.
         
-        This method analyzes the input text and identifies important concepts,
-        generating descriptions and importance scores for each.
+        No artificial limit on count. We rely on chunking for coverage.
+        The LLM returns as many concepts as it deems meaningful.
         
         Args:
             text: Input text to analyze
-            max_concepts: Maximum number of concepts to extract
             min_importance: Minimum importance score (0-1) for concepts
             
         Returns:
             List of concept dictionaries with keys:
-            - name: Concept name
-            - description: Brief description
+            - name: Concept name (2-5 words, canonical)
+            - description: Brief description (1-2 sentences)
             - importance: Importance score (0-1)
-            - source_text: Relevant excerpt from input
+            - source_text: Evidence quote from text
+            - level: Hierarchy level (1=core, 2=subtopics, 3=details)
+            - parent: Parent concept name if level>1, else null
             
         Raises:
             ValueError: If text validation fails
@@ -115,212 +187,276 @@ class TextProcessingService:
             raise ValueError(error_msg)
         
         # Build the extraction prompt
-        system_prompt = """You are an expert at analyzing text and extracting key concepts.
-Your task is to identify the most important concepts, ideas, or topics from the given text.
+        system_prompt = """You are an expert at concept mining.
+Return ALL salient, distinct concepts the text supports (no arbitrary limits).
 
-For each concept:
-- name: A clear, concise name (2-5 words)
-- description: A brief explanation of what this concept means (1-2 sentences)
-- importance: A score from 0.0 to 1.0 indicating how central this concept is to the text
-- source_text: A relevant quote or excerpt from the original text that supports this concept
+For each concept return:
+- name: 2–5 words, canonical
+- description: 1–2 sentences, faithful to the text
+- importance: 0.0–1.0 (how central to the text)
+- source_text: short evidence quote from the text
+- level: 1, 2, or 3  (1=core themes, 2=subtopics of a level-1, 3=details/examples)
+- parent: the parent concept's exact name if level>1, else null
 
-Return ONLY valid JSON in this exact format:
-{
-  "concepts": [
-    {
-      "name": "Concept Name",
-      "description": "Brief description of the concept",
-      "importance": 0.95,
-      "source_text": "Relevant excerpt from the text"
-    }
-  ]
-}
+Return ONLY valid JSON:
+{"concepts":[{...},{...}]}"""
 
-Be selective - focus on the most important and distinct concepts.
-Avoid redundant or overlapping concepts."""
-
-        user_prompt = f"""Analyze the following text and extract the {max_concepts} most important concepts.
-Only include concepts with importance >= {min_importance}.
+        user_prompt = f"""Analyze the text and return ALL meaningful concepts,
+including core themes (level 1), subtopics (level 2), and details/examples (level 3).
+Be inclusive; avoid merging distinct ideas.
 
 TEXT:
 {text}
 
-Remember: Return ONLY the JSON object, no additional text."""
+Important:
+- Use {{ "concepts": [...] }} EXACT JSON.
+- If two concepts are related but distinct, keep both.
+"""
 
         try:
-            # Call OpenAI API
+            # Call OpenAI API with JSON mode
             response = self.client.chat.completions.create(
                 model=self.model,
+                response_format={"type": "json_object"},  # Enforce JSON output
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.3,  # Lower temperature for more consistent extraction
-                max_tokens=8000  # Increased to max for comprehensive extraction
+                temperature=0.2,  # Low temperature for consistent extraction
+                max_tokens=8000  # Allow comprehensive extraction
             )
             
             # Parse response
-            response_text = response.choices[0].message.content.strip()
+            raw = response.choices[0].message.content
+            cleaned = self._clean_json_block(raw)
+            data = json.loads(cleaned)
+            concepts = data.get("concepts", [])
             
-            # Try to extract JSON from response
-            # Sometimes the model adds markdown formatting
-            if response_text.startswith("```json"):
-                response_text = response_text.replace("```json", "").replace("```", "").strip()
-            elif response_text.startswith("```"):
-                response_text = response_text.replace("```", "").strip()
+            # Validate concepts is a list
+            if not isinstance(concepts, list):
+                raise Exception(f"Expected 'concepts' to be a list, got {type(concepts)}")
             
-            # Parse JSON
-            result = json.loads(response_text)
-            concepts = result.get("concepts", [])
+            # Filter out invalid concepts and ensure required fields
+            valid_concepts = []
+            for c in concepts:
+                if not isinstance(c, dict):
+                    continue
+                # Ensure required fields exist with defaults
+                if not c.get("name"):
+                    continue
+                c.setdefault("description", "")
+                c.setdefault("importance", 0.5)
+                c.setdefault("source_text", "")
+                c.setdefault("level", 1)
+                c.setdefault("parent", None)
+                
+                # Only filter by min_importance if specified
+                if min_importance > 0 and c.get("importance", 0) < min_importance:
+                    continue
+                    
+                valid_concepts.append(c)
             
-            # Filter by minimum importance
-            filtered_concepts = [
-                c for c in concepts 
-                if c.get("importance", 0) >= min_importance
-            ]
-            
-            # Limit to max_concepts
-            filtered_concepts = filtered_concepts[:max_concepts]
-            
-            return filtered_concepts
+            return valid_concepts
             
         except json.JSONDecodeError as e:
-            raise Exception(f"Failed to parse GPT-4 response as JSON: {e}\nResponse: {response_text}")
+            # Safely truncate response without breaking JSON strings in error message
+            safe_preview = raw[:500].replace('"', "'").replace('\n', ' ') if 'raw' in locals() else 'N/A'
+            error_msg = f"Failed to parse LLM JSON response: {str(e)}. Preview: {safe_preview}"
+            raise Exception(error_msg)
         except Exception as e:
-            raise Exception(f"Concept extraction failed: {e}")
+            raise Exception(f"Concept extraction failed: {str(e)}")
     
-    def extract_relationships(
+    def _merge_dupes_by_embedding(
+        self, 
+        concepts: List[Dict[str, Any]], 
+        sim_thresh: float = 0.87
+    ) -> List[Dict[str, Any]]:
+        """
+        Merge duplicate concepts using semantic similarity of embeddings.
+        
+        Concepts with similarity >= sim_thresh are merged into one.
+        The highest-importance concept becomes the canonical version.
+        
+        Args:
+            concepts: List of concept dictionaries
+            sim_thresh: Similarity threshold for merging (0-1)
+            
+        Returns:
+            Deduplicated list of concepts with aliases for merged items
+        """
+        if not concepts:
+            return concepts
+        
+        # Ensure all concepts have embeddings
+        need_embed = any('embedding' not in c for c in concepts)
+        if need_embed:
+            # Generate embeddings for concepts missing them
+            texts = [f"{c.get('name','')}: {c.get('description','')}" for c in concepts]
+            embeds = self.generate_embeddings_batch(texts)
+            for i, c in enumerate(concepts):
+                c['embedding'] = embeds[i]
+        
+        # Merge duplicates by similarity
+        out, used = [], [False] * len(concepts)
+        
+        for i, c in enumerate(concepts):
+            if used[i]:
+                continue
+            
+            # Start a new group with this concept
+            group = [c]
+            used[i] = True
+            
+            # Find all similar concepts
+            for j in range(i + 1, len(concepts)):
+                if used[j]:
+                    continue
+                
+                if 'embedding' in c and 'embedding' in concepts[j]:
+                    sim = self.cosine_similarity(c['embedding'], concepts[j]['embedding'])
+                    if sim >= sim_thresh:
+                        group.append(concepts[j])
+                        used[j] = True
+            
+            # Keep highest-importance as canonical
+            best = max(group, key=lambda g: g.get('importance', 0))
+            
+            # Add aliases for merged concepts
+            aliases = list({g.get('name') for g in group if g is not best})
+            if aliases:
+                best['aliases'] = aliases
+            
+            out.append(best)
+        
+        return out
+    
+    def extract_relationships_all(
         self,
         text: str,
         concepts: List[Dict[str, Any]],
-        min_strength: float = 0.5
+        min_strength: float = 0.0,  # Keep all edges by default
+        batch_size: int = 60  # Batch for token safety, not a cap on total
     ) -> List[Dict[str, Any]]:
         """
-        Extract relationships between concepts using GPT-4.
+        Extract ALL meaningful relationships across concepts.
         
-        This method analyzes the concepts and input text to identify
-        meaningful relationships between concepts.
+        Batches concepts only for token safety, not as a limit.
+        Returns all edges the LLM can justify from the text.
         
         Args:
             text: Original input text
             concepts: List of extracted concepts
             min_strength: Minimum relationship strength (0-1)
+            batch_size: Size of concept batches (for token safety)
             
         Returns:
             List of relationship dictionaries with keys:
             - source: Source concept name
             - target: Target concept name
-            - type: Relationship type (e.g., 'is-a', 'part-of', 'related-to')
+            - type: Relationship type
             - strength: Relationship strength (0-1)
-            - description: Brief explanation of the relationship
+            - description: Brief explanation
             
         Raises:
             ValueError: If concepts list is empty
-            Exception: If API call fails
         """
-        if not concepts or len(concepts) == 0:
-            raise ValueError("Concepts list cannot be empty")
+        if not concepts:
+            return []
         
-        # Build concept list for prompt
-        concept_names = [c.get('name', '') for c in concepts]
-        concept_list = "\n".join([f"- {name}" for name in concept_names])
+        # Extract all concept names
+        all_names = [c.get('name', '') for c in concepts if c.get('name')]
+        relationships: List[Dict[str, Any]] = []
         
-        # Build the extraction prompt
-        system_prompt = """You are an expert at identifying relationships between concepts in text.
-Your task is to analyze concepts extracted from text and identify meaningful relationships between them.
+        # Build system prompt for relationship extraction
+        system_prompt = """You identify relationships among a provided list of concepts.
+Return ALL meaningful edges you can justify from the text.
 
-Common relationship types:
-- "is-a": Hierarchical relationship (e.g., "Dog is-a Animal")
-- "part-of": Component relationship (e.g., "Engine part-of Car")
-- "related-to": General association
-- "causes": Causal relationship
-- "enables": One concept enables another
-- "requires": Dependency relationship
-- "uses": One concept uses another
-- "implements": Implementation relationship
-- "contrasts-with": Opposition or difference
+Allowed types:
+- "is-a", "part-of", "related-to", "causes", "enables", "requires", "uses", "implements", "contrasts-with"
 
 For each relationship:
-- source: The source concept name (must match exactly from the concept list)
-- target: The target concept name (must match exactly from the concept list)
-- type: One of the relationship types above
-- strength: A score from 0.0 to 1.0 indicating relationship strength
-- description: A brief explanation of why these concepts are related (1 sentence)
+- source: exact concept name
+- target: exact concept name
+- type: one of the above
+- strength: 0.0–1.0 (confidence)
+- description: one sentence rationale with evidence
 
-Return ONLY valid JSON in this exact format:
-{
-  "relationships": [
-    {
-      "source": "Concept A",
-      "target": "Concept B",
-      "type": "is-a",
-      "strength": 0.9,
-      "description": "Concept A is a type of Concept B"
-    }
-  ]
-}
-
-Only identify strong, meaningful relationships. Avoid weak or speculative connections."""
-
-        user_prompt = f"""Analyze the following text and identify relationships between the extracted concepts.
-Only include relationships with strength >= {min_strength}.
-
-ORIGINAL TEXT:
+Return ONLY JSON:
+{"relationships":[{...},{...}]}"""
+        
+        # Create context of all concept names
+        names_context = "\n".join(f"- {n}" for n in all_names)
+        
+        # Process in batches (for token safety, not limiting output)
+        for batch in self._batch(all_names, size=batch_size):
+            user_prompt = f"""TEXT:
 {text}
 
-EXTRACTED CONCEPTS:
-{concept_list}
+ALL CONCEPTS (context):
+{names_context}
 
-Identify the relationships between these concepts based on the text.
-Remember: Return ONLY the JSON object, no additional text."""
+BATCH FOCUS (propose edges that involve AT LEAST ONE of these):
+{', '.join(batch)}
 
-        try:
-            # Call OpenAI API
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.3,  # Lower temperature for more consistent extraction
-                max_tokens=8000  # Increased to max for comprehensive relationship extraction
-            )
+Return JSON with ALL edges you can justify. No arbitrary limits."""
             
-            # Parse response
-            response_text = response.choices[0].message.content.strip()
-            
-            # Try to extract JSON from response
-            if response_text.startswith("```json"):
-                response_text = response_text.replace("```json", "").replace("```", "").strip()
-            elif response_text.startswith("```"):
-                response_text = response_text.replace("```", "").strip()
-            
-            # Parse JSON
-            result = json.loads(response_text)
-            relationships = result.get("relationships", [])
-            
-            # Filter by minimum strength
-            filtered_relationships = [
-                r for r in relationships
-                if r.get("strength", 0) >= min_strength
-            ]
-            
-            # Validate that source and target exist in concepts
-            valid_relationships = []
-            for rel in filtered_relationships:
-                source = rel.get("source", "")
-                target = rel.get("target", "")
+            try:
+                # Call OpenAI API with JSON mode
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    response_format={"type": "json_object"},  # Enforce JSON output
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=0.2,  # Low temperature for consistent extraction
+                    max_tokens=8000
+                )
                 
-                # Check if both source and target are in concept names
-                if source in concept_names and target in concept_names:
-                    valid_relationships.append(rel)
-            
-            return valid_relationships
-            
-        except json.JSONDecodeError as e:
-            raise Exception(f"Failed to parse GPT-4 response as JSON: {e}\nResponse: {response_text}")
-        except Exception as e:
-            raise Exception(f"Relationship extraction failed: {e}")
+                # Parse response
+                raw = response.choices[0].message.content
+                cleaned = self._clean_json_block(raw)
+                data = json.loads(cleaned)
+                rels = data.get("relationships", [])
+                
+                # Ensure rels is a list
+                if not isinstance(rels, list):
+                    print(f"Warning: relationships is not a list, got {type(rels)}")
+                    rels = []
+                
+                # Filter by min_strength if requested
+                if min_strength > 0:
+                    rels = [r for r in rels if isinstance(r, dict) and r.get("strength", 0) >= min_strength]
+                
+                # Sanity check: only keep edges whose endpoints actually exist
+                keep = []
+                sset = set(all_names)
+                for r in rels:
+                    if not isinstance(r, dict):
+                        continue
+                    s, t = r.get("source", ""), r.get("target", "")
+                    if s in sset and t in sset and s != t:
+                        keep.append(r)
+                
+                relationships.extend(keep)
+                
+            except json.JSONDecodeError as e:
+                # Safely log JSON errors without breaking
+                safe_preview = raw[:300].replace('"', "'") if 'raw' in locals() else 'N/A'
+                print(f"Relationship batch JSON parse failed: {e}. Preview: {safe_preview}")
+            except Exception as e:
+                print(f"Relationship batch failed: {str(e)}")
+        
+        # Deduplicate edges by (source, target, type)
+        seen = set()
+        unique = []
+        for r in relationships:
+            key = (r.get('source'), r.get('target'), r.get('type'))
+            if key not in seen:
+                seen.add(key)
+                unique.append(r)
+        
+        return unique
     
     def generate_embedding(self, text: str) -> List[float]:
         """
@@ -665,22 +801,23 @@ Remember: Return ONLY the JSON object, no additional text."""
     def process_text(
         self,
         text: str,
-        max_concepts: int = 10,
-        min_importance: float = 0.5,
-        min_strength: float = 0.5,
+        min_importance: float = 0.0,  # LLM decides; keep everything by default
+        min_strength: float = 0.0,    # Keep all edges by default
         extract_rels: bool = True,
         generate_embeddings: bool = True
     ) -> Dict[str, Any]:
         """
-        Process text and return extracted concepts and relationships with metadata.
+        Process text with NO artificial caps - unlimited concepts and edges.
         
-        This is the main entry point for text processing. It validates input,
-        extracts concepts, generates embeddings, extracts relationships,
-        builds hierarchy, and ensures connectivity.
+        Full pipeline:
+        1. Chunk text for comprehensive coverage
+        2. Extract ALL concepts per chunk (LLM decides count)
+        3. Embed and merge duplicates semantically
+        4. Extract ALL relationships across concepts (batched for token safety)
+        5. Build hierarchy and ensure connectivity
         
         Args:
             text: Input text to process
-            max_concepts: Maximum number of concepts to extract
             min_importance: Minimum importance score (0-1) for concepts
             min_strength: Minimum strength score (0-1) for relationships
             extract_rels: Whether to extract relationships (default: True)
@@ -688,59 +825,98 @@ Remember: Return ONLY the JSON object, no additional text."""
             
         Returns:
             Dictionary containing:
-            - concepts: List of extracted concept dictionaries (with tier info)
+            - concepts: List of extracted concept dictionaries (with tier/level info)
             - relationships: List of extracted relationship dictionaries
-            - metadata: Processing metadata (model used, parameters, hierarchy info, etc.)
+            - metadata: Processing metadata (counts, chunk info, etc.)
             
         Raises:
             ValueError: If text validation fails
             Exception: If processing fails
         """
-        # Step 1: Extract concepts
-        concepts = self.extract_concepts(text, max_concepts, min_importance)
+        # Validate input
+        is_valid, error_msg = self.validate_text_input(text)
+        if not is_valid:
+            raise ValueError(error_msg)
         
-        # Step 2: Generate embeddings if requested
-        if generate_embeddings and len(concepts) > 0:
-            concepts = self.add_embeddings_to_concepts(concepts)
+        # Step 1: Chunk for comprehensive recall
+        # Optimization: Skip chunking for texts < 3000 chars (single LLM call is faster)
+        if len(text) < 3000:
+            chunks = [text]
+        else:
+            chunks = self._chunk(text)
+            if not chunks:
+                chunks = [text]
         
-        # Step 3: Extract relationships if requested and concepts exist
-        relationships = []
-        if extract_rels and len(concepts) > 0:
-            relationships = self.extract_relationships(text, concepts, min_strength)
+        print(f"Processing {len(chunks)} chunk(s) for {len(text)} characters")
         
-        # Step 4: Build hierarchy and ensure connectivity
-        # This creates a consolidated, tiered graph with no islands
-        if len(concepts) > 0:
-            concepts, relationships = self.build_hierarchy_and_connectivity(
-                concepts, 
+        # Step 2: Extract ALL concepts per chunk (no limits)
+        concepts_all: List[Dict[str, Any]] = []
+        for i, chunk in enumerate(chunks):
+            print(f"  Extracting concepts from chunk {i+1}/{len(chunks)}...")
+            chunk_concepts = self.extract_concepts(chunk, min_importance=min_importance)
+            print(f"    Found {len(chunk_concepts)} concepts")
+            concepts_all.extend(chunk_concepts)
+        
+        # Step 3: Embed & merge duplicates semantically
+        print(f"  Total concepts before deduplication: {len(concepts_all)}")
+        if generate_embeddings and concepts_all:
+            print(f"  Generating embeddings and merging duplicates...")
+            # _merge_dupes_by_embedding will generate embeddings if missing
+            concepts_all = self._merge_dupes_by_embedding(concepts_all, sim_thresh=0.87)
+            print(f"  Concepts after deduplication: {len(concepts_all)}")
+        else:
+            # Minimal fallback: dedupe by exact name match
+            seen_names = set()
+            unique = []
+            for c in concepts_all:
+                n = c.get('name', '')
+                if n and n not in seen_names:
+                    seen_names.add(n)
+                    unique.append(c)
+            concepts_all = unique
+        
+        # Step 4: Extract ALL relationships across concepts (batched for token safety)
+        relationships: List[Dict[str, Any]] = []
+        if extract_rels and concepts_all:
+            print(f"  Extracting relationships for {len(concepts_all)} concepts...")
+            relationships = self.extract_relationships_all(
+                text=text,
+                concepts=concepts_all,
+                min_strength=min_strength,
+            )
+            print(f"  Found {len(relationships)} relationships")
+        
+        # Step 5: Build hierarchy and ensure connectivity
+        # This ensures a single connected graph with proper tiers
+        if concepts_all:
+            concepts_all, relationships = self.build_hierarchy_and_connectivity(
+                concepts_all,
                 relationships
             )
         
-        # Step 5: Count tier distribution
-        tier1_count = sum(1 for c in concepts if c.get('tier') == 1)
-        tier2_count = sum(1 for c in concepts if c.get('tier') == 2)
+        # Step 6: Gather metadata
+        tier1_count = sum(1 for c in concepts_all if c.get('tier') == 1)
+        tier2_count = sum(1 for c in concepts_all if c.get('tier') == 2)
         inferred_rels = sum(1 for r in relationships if r.get('inferred', False))
         
         # Build response
         response = {
-            "concepts": concepts,
+            "concepts": concepts_all,
             "relationships": relationships,
             "metadata": {
                 "model": self.model,
                 "embedding_model": self.embedding_model,
-                "max_concepts": max_concepts,
-                "min_importance": min_importance,
-                "min_strength": min_strength,
-                "concepts_found": len(concepts),
+                "concepts_found": len(concepts_all),
                 "relationships_found": len(relationships),
+                "explicit_relationships": len(relationships) - inferred_rels,
+                "inferred_relationships": inferred_rels,
                 "tier1_concepts": tier1_count,
                 "tier2_concepts": tier2_count,
-                "inferred_relationships": inferred_rels,
-                "explicit_relationships": len(relationships) - inferred_rels,
                 "input_length": len(text),
-                "embeddings_generated": generate_embeddings,
+                "embeddings_generated": bool(generate_embeddings),
                 "hierarchy_enabled": True,
-                "connectivity_ensured": True
+                "connectivity_ensured": True,
+                "chunk_count": len(chunks)
             }
         }
         
@@ -750,16 +926,16 @@ Remember: Return ONLY the JSON object, no additional text."""
 # Convenience function for quick usage
 def extract_concepts_from_text(
     text: str,
-    max_concepts: int = 10,
-    min_importance: float = 0.5,
+    min_importance: float = 0.0,
     api_key: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Convenience function to extract concepts from text.
     
+    Extracts ALL salient concepts (no artificial limit).
+    
     Args:
         text: Input text to analyze
-        max_concepts: Maximum number of concepts to extract
         min_importance: Minimum importance score (0-1)
         api_key: OpenAI API key (uses env var if not provided)
         
@@ -767,5 +943,5 @@ def extract_concepts_from_text(
         List of concept dictionaries
     """
     service = TextProcessingService(api_key=api_key)
-    return service.extract_concepts(text, max_concepts, min_importance)
+    return service.extract_concepts(text, min_importance)
 

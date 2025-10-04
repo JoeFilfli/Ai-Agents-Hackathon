@@ -70,7 +70,12 @@ export default function ChatPanel() {
       }));
       
       // Call the Q&A endpoint (without node_id for global context)
-      const response = await fetch('/api/py/llm/qa', {
+      // Bypass Next.js proxy in development to avoid timeout
+      const apiUrl = process.env.NODE_ENV === 'development'
+        ? 'http://127.0.0.1:8000/api/py/llm/qa'
+        : '/api/py/llm/qa';
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

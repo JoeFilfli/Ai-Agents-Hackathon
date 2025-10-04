@@ -140,8 +140,10 @@ export default function GraphPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           text,
-          max_concepts: 10,
-          min_importance: 0.5 
+          min_importance: 0.0,  // 0.0 = LLM decides (unlimited concepts)
+          min_strength: 0.0,    // 0.0 = keep all relationships
+          extract_relationships: true,
+          generate_embeddings: true
         }),
       });
       

@@ -141,17 +141,20 @@ export interface TextProcessResponse {
  * API request for text processing.
  */
 export interface TextProcessRequest {
-  /** Raw text to process */
+  /** Raw text to process (100-50,000 characters) */
   text: string;
   
-  /** Optional processing options */
-  options?: {
-    /** Maximum number of nodes to extract */
-    maxNodes?: number;
-    
-    /** Minimum confidence threshold (0-1) */
-    minConfidence?: number;
-  };
+  /** Minimum importance score for concepts (0-1). Default 0.0 = LLM decides all concepts */
+  min_importance?: number;
+  
+  /** Minimum strength score for relationships (0-1). Default 0.0 = keep all edges */
+  min_strength?: number;
+  
+  /** Whether to extract relationships between concepts */
+  extract_relationships?: boolean;
+  
+  /** Whether to generate embeddings for semantic similarity */
+  generate_embeddings?: boolean;
 }
 
 /**
