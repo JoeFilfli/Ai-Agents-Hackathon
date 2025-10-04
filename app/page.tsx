@@ -136,12 +136,14 @@ export default function Home() {
   
   /**
    * Handle starting over (clear graph and show input form)
+   * Also closes the chat panel if it's open
    */
   const handleStartOver = () => {
     clearGraph();
     setInputText('');
     setShowInput(true);
     clearError();
+    setChatPanelOpen(false); // Close chat panel
   };
   
   /**
