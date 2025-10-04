@@ -96,6 +96,23 @@ Tests the FastAPI endpoints.
 python api/tests/test_api.py
 ```
 
+### `test_graph_service.py`
+Tests the NetworkX graph service.
+
+**What it tests:**
+- ✓ Graph creation with nodes and edges
+- ✓ Graph storage and retrieval
+- ✓ Node and edge queries
+- ✓ Path finding (shortest path, all paths)
+- ✓ Subgraph extraction
+- ✓ Distance queries (n-hop neighbors)
+- ✓ Graph statistics
+
+**Run:**
+```bash
+python api/tests/test_graph_service.py
+```
+
 ## Running All Tests
 
 To run all tests in sequence:
@@ -118,6 +135,9 @@ python api/tests/test_embeddings.py
 
 # Test 6: API endpoints
 python api/tests/test_api.py
+
+# Test 7: Graph service
+python api/tests/test_graph_service.py
 ```
 
 ## Prerequisites

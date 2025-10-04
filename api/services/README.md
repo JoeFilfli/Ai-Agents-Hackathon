@@ -5,6 +5,10 @@ This directory contains business logic services for the mindmap system.
 ## Services
 
 ### `text_processing.py` - Text Processing Service
+Extracts concepts and relationships from raw text using OpenAI GPT-4.
+
+### `graph_service.py` - Graph Service
+Manages knowledge graph structures using NetworkX.
 
 Extracts concepts and relationships from raw text using OpenAI GPT-4.
 
@@ -111,10 +115,42 @@ This tests:
 - ✓ Response format
 - ✓ Full processing workflow
 
+**Key Features:**
+- In-memory graph storage
+- NetworkX integration
+- Path finding (shortest path, all paths)
+- Subgraph extraction
+- Distance queries (n-hop neighbors)
+- Graph statistics
+
+**Usage:**
+
+```python
+from api.services.graph_service import GraphService
+
+# Initialize service
+service = GraphService()
+
+# Create graph
+nodes = [
+    {"id": "node_1", "label": "Python", "type": "language"},
+    {"id": "node_2", "label": "Web Dev", "type": "field"}
+]
+edges = [
+    {"source": "node_1", "target": "node_2", "relationship_type": "used-in"}
+]
+
+G = service.create_graph("my_graph", nodes, edges)
+
+# Query operations
+neighbors = service.get_neighbors("my_graph", "node_1")
+path = service.get_path("my_graph", "node_1", "node_2")
+stats = service.get_graph_statistics("my_graph")
+```
+
 ## Future Services
 
 Coming in next phases:
-- `graph_service.py` - Graph operations and traversal
 - `llm_service.py` - Relationship explanations and Q&A
 - `tts_service.py` - Text-to-speech synthesis
 

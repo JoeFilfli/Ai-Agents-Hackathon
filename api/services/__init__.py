@@ -4,6 +4,7 @@ Contains business logic for text processing, graph operations, LLM, and TTS.
 """
 
 from .text_processing import TextProcessingService
+from .graph_service import GraphService
 
-__all__ = ['TextProcessingService']
+__all__ = ['TextProcessingService', 'GraphService']
 

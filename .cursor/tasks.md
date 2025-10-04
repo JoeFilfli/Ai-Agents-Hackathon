@@ -47,7 +47,7 @@
 
 ### Phase 3: Graph Service (Day 1 Evening)
 
-- [ ] 7. Build NetworkX graph service
+- [x] 7. Build NetworkX graph service
   - Create api/services/graph_service.py with GraphBuilder
   - Build NetworkX graph from nodes/edges
   - Store graphs in-memory with dict (graph_id -> Graph)

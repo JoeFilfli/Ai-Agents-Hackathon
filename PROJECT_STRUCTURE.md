@@ -10,6 +10,7 @@ Ai_Agents/
 │   ├── services/               # Business logic services
 │   │   ├── __init__.py
 │   │   ├── text_processing.py  # Text analysis & concept extraction
+│   │   ├── graph_service.py    # Graph management with NetworkX
 │   │   └── README.md
 │   ├── tests/                  # Backend test suite
 │   │   ├── __init__.py
@@ -19,6 +20,7 @@ Ai_Agents/
 │   │   ├── test_relationships.py    # Relationship extraction tests
 │   │   ├── test_embeddings.py  # Embedding generation tests
 │   │   ├── test_api.py         # API endpoint tests
+│   │   ├── test_graph_service.py # Graph service tests
 │   │   └── README.md
 │   └── index.py                # Main FastAPI application (API endpoints)
 │
@@ -92,6 +94,9 @@ python api/tests/test_embeddings.py
 
 # API endpoint tests
 python api/tests/test_api.py
+
+# Graph service tests
+python api/tests/test_graph_service.py
 ```
 
 ### Frontend Tests
