@@ -48,6 +48,21 @@ Tests the text processing service and concept extraction.
 python api/tests/test_text_processing.py
 ```
 
+### `test_relationships.py`
+Tests relationship extraction between concepts.
+
+**What it tests:**
+- ✓ Simple relationship extraction
+- ✓ Various relationship types (is-a, part-of, uses, etc.)
+- ✓ Response format validation
+- ✓ Full pipeline (concepts + relationships)
+- ✓ Source/target validation
+
+**Run:**
+```bash
+python api/tests/test_relationships.py
+```
+
 ## Running All Tests
 
 To run all tests in sequence:
@@ -61,6 +76,9 @@ python api/tests/test_models.py
 
 # Test 3: Text processing service
 python api/tests/test_text_processing.py
+
+# Test 4: Relationship extraction
+python api/tests/test_relationships.py
 ```
 
 ## Prerequisites

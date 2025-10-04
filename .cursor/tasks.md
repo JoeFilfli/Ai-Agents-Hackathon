@@ -29,7 +29,7 @@
   - Basic input validation (100-50k chars)
   - _Test_: Process sample text about "machine learning". Verify returns concepts with names and descriptions.
 
-- [ ] 4. Implement GPT-4 relationship extraction
+- [x] 4. Implement GPT-4 relationship extraction
   - Add relationship extraction to text_processing.py
   - Use GPT-4 prompt: "Identify relationships as JSON: {relationships: [{source, target, type, strength}]}"
   - _Test_: Process text "Python is a programming language". Verify extracts (Python, is-a, programming language).

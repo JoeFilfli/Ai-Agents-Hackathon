@@ -6,13 +6,14 @@ This directory contains business logic services for the mindmap system.
 
 ### `text_processing.py` - Text Processing Service
 
-Extracts concepts from raw text using OpenAI GPT-4.
+Extracts concepts and relationships from raw text using OpenAI GPT-4.
 
 **Key Features:**
 - Input validation (100-50,000 characters)
 - Concept extraction with GPT-4
+- Relationship extraction between concepts
 - Structured JSON output
-- Configurable max concepts and minimum importance
+- Configurable parameters (max concepts, min importance, min strength)
 
 **Usage:**
 
@@ -29,11 +30,13 @@ concepts = service.extract_concepts(
     min_importance=0.6
 )
 
-# Or use the full processing method
+# Or use the full processing method (extracts concepts + relationships)
 result = service.process_text(
     text="Your text here...",
     max_concepts=10,
-    min_importance=0.5
+    min_importance=0.5,
+    min_strength=0.5,
+    extract_rels=True
 )
 
 # Result contains:
@@ -46,12 +49,29 @@ result = service.process_text(
 #       "source_text": "Relevant excerpt"
 #     }
 #   ],
+#   "relationships": [
+#     {
+#       "source": "Concept A",
+#       "target": "Concept B",
+#       "type": "is-a",
+#       "strength": 0.9,
+#       "description": "Explanation of relationship"
+#     }
+#   ],
 #   "metadata": {
 #     "model": "gpt-4o-mini",
 #     "concepts_found": 5,
+#     "relationships_found": 3,
 #     ...
 #   }
 # }
+
+# Or extract relationships separately
+relationships = service.extract_relationships(
+    text="Your text...",
+    concepts=concepts_list,
+    min_strength=0.5
+)
 ```
 
 **Validation Rules:**
