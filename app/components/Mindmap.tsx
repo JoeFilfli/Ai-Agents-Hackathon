@@ -282,24 +282,29 @@ export default function Mindmap({
     });
     
     // Handle mouse over node (highlight connections)
+    // Only highlights OUTGOING edges (where hovered node is the source)
     cy.on('mouseover', 'node', (event) => {
       const nodeId = event.target.id();
       setHoveredNodeId(nodeId);
       
-      // Get connected nodes and edges
+      // Get the hovered node
       const node = event.target;
-      const connectedEdges = node.connectedEdges();
-      const connectedNodes = connectedEdges.connectedNodes();
       
-      // Dim all elements
+      // Get only OUTGOING edges (where this node is the source)
+      const outgoingEdges = node.connectedEdges().filter(`[source = "${nodeId}"]`);
+      
+      // Get target nodes of outgoing edges
+      const targetNodes = outgoingEdges.targets();
+      
+      // Dim all elements first
       cy.elements().addClass('dimmed');
       
-      // Highlight hovered node
+      // Highlight the hovered node
       node.removeClass('dimmed').addClass('hovered');
       
-      // Highlight connected elements
-      connectedNodes.removeClass('dimmed').addClass('connected');
-      connectedEdges.removeClass('dimmed').addClass('connected');
+      // Highlight only outgoing edges and their target nodes
+      outgoingEdges.removeClass('dimmed').addClass('connected');
+      targetNodes.removeClass('dimmed').addClass('connected');
     });
     
     // Handle mouse out node (clear highlights)
