@@ -115,30 +115,31 @@
 
 ### Phase 6: Side Panel & Features (Day 2 Evening)
 
-- [ ] 17. Build side panel layout
+- [x] 17. Build side panel layout
   - Create app/components/SidePanel.tsx with tabs
   - Tabs: Details, Relationships, Q&A
   - Smooth open/close animation
   - _Test_: Select node. Panel opens. Switch tabs. Close panel.
 
-- [ ] 18. Implement Details tab
+- [x] 18. Implement Details tab
   - Show node label, description, source text
   - Display confidence/importance score
   - _Test_: Select node. Details tab shows all node information clearly.
 
-- [ ] 19. Implement Relationships tab
+- [x] 19. Implement Relationships tab
   - Button to "Explain Relationships"
   - Call /api/py/llm/explain endpoint
   - Display explanation text
   - Highlight related nodes on graph
   - _Test_: Click explain button. Explanation appears. Related nodes highlight on graph.
 
-- [ ] 20. Implement Q&A tab
-  - Input field for questions
-  - Display conversation history
-  - Call /api/py/llm/qa endpoint
-  - Show answers with formatting
-  - _Test_: Type question, submit. Answer appears. Ask follow-up - maintains context.
+- [x] 20. Implement Q&A (changed from per-node to global graph Q&A)
+  - Removed Q&A tab from side panel
+  - Created separate ChatPanel component for global graph Q&A
+  - Floating chat button appears when graph is displayed
+  - Full conversation history with chat-style interface
+  - Call /api/py/llm/qa endpoint without node_id for entire graph context
+  - _Test_: Click chat button, ask questions about the entire graph. Conversation persists.
 
 ### Phase 7: Voice-Over (Day 3 Morning)
 

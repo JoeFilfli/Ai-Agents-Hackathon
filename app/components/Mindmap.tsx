@@ -53,7 +53,8 @@ export default function Mindmap({
     selectNode, 
     highlightedNodeIds,
     updateNode,
-    setExpandingNode 
+    setExpandingNode,
+    setSidePanelOpen 
   } = useMindmapStore();
   
   // Track if Cytoscape is initialized
@@ -120,13 +121,11 @@ export default function Mindmap({
             'border-color': '#818CF8', // Indigo-400
           } as any,
         },
-        // Selected node style
+        // Selected node style - no visual change
         {
           selector: 'node:selected',
           style: {
-            'background-color': '#EF4444', // Red-500
-            'border-color': '#F87171', // Red-400
-            'border-width': 3,
+            // No visual change on selection - side panel is the indicator
           } as any,
         },
         // Highlighted node style
@@ -179,13 +178,11 @@ export default function Mindmap({
             'text-margin-y': -10,
           } as any,
         },
-        // Selected edge style
+        // Selected edge style - no visual change
         {
           selector: 'edge:selected',
           style: {
-            'width': 3,
-            'line-color': '#EF4444', // Red-500
-            'target-arrow-color': '#EF4444',
+            // No visual change on selection
           } as any,
         },
         // Connected edges (when hovering)
@@ -240,6 +237,7 @@ export default function Mindmap({
     cy.on('tap', 'node', (event) => {
       const nodeId = event.target.id();
       selectNode(nodeId);
+      setSidePanelOpen(true); // Open side panel when node is selected
     });
     
     // Handle node expansion (double click)
@@ -275,6 +273,7 @@ export default function Mindmap({
     cy.on('tap', (event) => {
       if (event.target === cy) {
         selectNode(null);
+        setSidePanelOpen(false); // Close side panel when background is clicked
       }
     });
     
@@ -317,7 +316,7 @@ export default function Mindmap({
         setIsInitialized(false);
       }
     };
-  }, [selectNode]);
+  }, [selectNode, setSidePanelOpen]);
 
   /**
    * Handle node expansion

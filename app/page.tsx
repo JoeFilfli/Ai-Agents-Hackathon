@@ -12,6 +12,8 @@
 
 import React, { useState } from 'react';
 import Mindmap from '@/app/components/Mindmap';
+import SidePanel from '@/app/components/SidePanel';
+import ChatPanel from '@/app/components/ChatPanel';
 import { useMindmapStore } from '@/app/store/graphStore';
 import { TextProcessResponse } from '@/app/types/graph';
 
@@ -25,7 +27,9 @@ export default function Home() {
     setProcessingText,
     error,
     setError,
-    clearError
+    clearError,
+    chatPanelOpen,
+    setChatPanelOpen
   } = useMindmapStore();
   
   // Local state for text input
@@ -83,6 +87,10 @@ export default function Home() {
       
       console.log('Raw API response:', data);
       
+      // Get graphId (handle both snake_case and camelCase)
+      const graphId = (data as any).graph_id || data.graphId;
+      console.log('Graph ID:', graphId);
+      
       // Transform snake_case to camelCase for TypeScript compatibility
       const transformedNodes = data.nodes.map((node: any) => ({
         ...node,
@@ -100,18 +108,19 @@ export default function Home() {
       console.log('Transformed edges:', transformedEdges);
       
       // Update the store with the generated graph
-      setGraph(data.graphId, transformedNodes, transformedEdges);
+      setGraph(graphId, transformedNodes, transformedEdges);
       
       console.log('Store updated. Current state:', { 
         showInput, 
-        nodesLength: transformedNodes.length 
+        nodesLength: transformedNodes.length,
+        graphId: graphId
       });
       
       // Hide the input form and show the graph
       setShowInput(false);
       
       console.log('Graph generated successfully:', {
-        graphId: data.graphId,
+        graphId: graphId,
         nodeCount: transformedNodes.length,
         edgeCount: transformedEdges.length,
         showInput: false,
@@ -146,9 +155,11 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <main className={`flex min-h-screen flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 transition-all duration-300 ${
+      chatPanelOpen ? 'ml-96' : 'ml-0'
+    }`}>
       {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700 shadow-lg">
+      <header className="bg-slate-800 border-b border-slate-700 shadow-lg z-50 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -212,13 +223,13 @@ export default function Home() {
                   <span className="text-slate-400">
                     {' '} / {MIN_CHARS.toLocaleString()} - {MAX_CHARS.toLocaleString()} characters
                   </span>
-                </div>
-                
+      </div>
+
                 <div className="text-xs text-slate-400">
                   Press <kbd className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-300">Ctrl</kbd> + <kbd className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-300">Enter</kbd> to submit
                 </div>
-              </div>
-              
+      </div>
+
               {/* Error Message */}
               {error && (
                 <div className="mt-4 p-4 bg-red-900/30 border border-red-700 rounded-lg">
@@ -254,7 +265,7 @@ export default function Home() {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Processing text...
-                  </span>
+            </span>
                 ) : (
                   'Generate Knowledge Graph'
                 )}
@@ -337,6 +348,38 @@ export default function Home() {
           </div>
         )}
       </div>
+      
+      {/* Side Panel */}
+      <SidePanel />
+      
+      {/* Chat Panel */}
+      <ChatPanel />
+      
+      {/* Hover Trigger for Chat Panel - Left Edge */}
+      {!showInput && nodes.length > 0 && (
+        <div
+          onMouseEnter={() => setChatPanelOpen(true)}
+          className="fixed left-0 top-0 h-full w-8 z-40 group"
+          title="Hover to open Q&A Chat"
+        >
+          {/* Visual indicator */}
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-indigo-600/50 group-hover:bg-indigo-600 rounded-r-lg px-1 py-8 transition-all group-hover:px-2">
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+          </div>
+      </div>
+      )}
     </main>
   );
 }
