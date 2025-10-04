@@ -106,7 +106,7 @@
   - Visual highlighting for selected nodes
   - _Test_: Click node - selects and highlights. Double-click - expands. Hover - connections highlight.
 
-- [ ] 16. Create main page with text input
+- [x] 16. Create main page with text input
   - Replace app/page.tsx with mindmap interface
   - Add textarea for text input
   - Validate length, call /api/py/text/process

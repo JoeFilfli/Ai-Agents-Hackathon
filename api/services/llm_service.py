@@ -79,7 +79,7 @@ class LLMService:
                     }
                 ],
                 temperature=0.7,
-                max_tokens=300
+                max_tokens=4000  # Increased to max for detailed explanations
             )
             
             explanation = response.choices[0].message.content.strip()
@@ -145,7 +145,7 @@ class LLMService:
         question: str,
         graph_context: Dict[str, Any],
         conversation_history: Optional[List[Dict[str, str]]] = None,
-        max_tokens: int = 500
+        max_tokens: int = 4000  # Increased to max for comprehensive answers
     ) -> Dict[str, Any]:
         """
         Answer a question about the knowledge graph with conversation history support.
@@ -413,7 +413,7 @@ class LLMService:
         self,
         nodes: List[Dict[str, Any]],
         edges: List[Dict[str, Any]],
-        max_tokens: int = 300
+        max_tokens: int = 2000  # Increased to max for detailed summaries
     ) -> str:
         """
         Generate a summary of the entire knowledge graph.

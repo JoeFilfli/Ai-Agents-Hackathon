@@ -44,6 +44,9 @@ export interface Node {
   /** Whether this node has child nodes for expansion */
   hasChildren: boolean;
   
+  /** Hierarchical tier: 1 = core concept, 2 = detail concept */
+  tier?: number;
+  
   /** Timestamp when this node was created */
   createdAt?: string;
   

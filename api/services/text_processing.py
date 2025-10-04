@@ -156,7 +156,7 @@ Remember: Return ONLY the JSON object, no additional text."""
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.3,  # Lower temperature for more consistent extraction
-                max_tokens=2000
+                max_tokens=8000  # Increased to max for comprehensive extraction
             )
             
             # Parse response
@@ -283,7 +283,7 @@ Remember: Return ONLY the JSON object, no additional text."""
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.3,  # Lower temperature for more consistent extraction
-                max_tokens=2000
+                max_tokens=8000  # Increased to max for comprehensive relationship extraction
             )
             
             # Parse response
@@ -451,6 +451,217 @@ Remember: Return ONLY the JSON object, no additional text."""
         
         return float(similarity)
     
+    def build_hierarchy_and_connectivity(
+        self,
+        concepts: List[Dict[str, Any]],
+        relationships: List[Dict[str, Any]]
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Build hierarchical structure and ensure FULL graph connectivity.
+        
+        This lightweight pass GUARANTEES:
+        1. ONE fully connected graph (no isolated islands)
+        2. Tier levels (1=core concepts, 2=details)
+        3. Semantic relationships based on embeddings when needed
+        
+        Args:
+            concepts: List of concept dictionaries
+            relationships: List of relationship dictionaries
+            
+        Returns:
+            Tuple of (enhanced_concepts, enhanced_relationships)
+        """
+        if not concepts:
+            return concepts, relationships
+        
+        if len(concepts) == 1:
+            # Single concept - mark as tier 1
+            concepts[0]['tier'] = 1
+            concepts[0]['connections'] = 0
+            return concepts, relationships
+        
+        # Step 1: Build adjacency structure for connectivity analysis
+        concept_names = {c['name']: i for i, c in enumerate(concepts)}
+        concept_connections = {c['name']: 0 for c in concepts}
+        adjacency = {c['name']: set() for c in concepts}
+        
+        # Build adjacency list (undirected)
+        for rel in relationships:
+            source = rel.get('source', '')
+            target = rel.get('target', '')
+            if source in concept_names and target in concept_names:
+                adjacency[source].add(target)
+                adjacency[target].add(source)
+                concept_connections[source] += 1
+                concept_connections[target] += 1
+        
+        # Step 2: Find connected components using BFS
+        def find_connected_components():
+            visited = set()
+            components = []
+            
+            for concept in concepts:
+                name = concept['name']
+                if name not in visited:
+                    # BFS to find component
+                    component = set()
+                    queue = [name]
+                    
+                    while queue:
+                        current = queue.pop(0)
+                        if current not in visited:
+                            visited.add(current)
+                            component.add(current)
+                            # Add unvisited neighbors
+                            for neighbor in adjacency[current]:
+                                if neighbor not in visited:
+                                    queue.append(neighbor)
+                    
+                    components.append(component)
+            
+            return components
+        
+        # Step 3: Connect all components into ONE graph
+        new_relationships = []
+        components = find_connected_components()
+        
+        print(f"Found {len(components)} connected component(s)")
+        
+        # If multiple components exist, connect them
+        if len(components) > 1:
+            # Strategy: Connect each component to the main (largest) component
+            main_component = max(components, key=len)
+            
+            for component in components:
+                if component == main_component:
+                    continue
+                
+                # Find best connection between this component and main component
+                best_source = None
+                best_target = None
+                best_similarity = -1
+                
+                for source_name in component:
+                    source_concept = next(c for c in concepts if c['name'] == source_name)
+                    
+                    if 'embedding' in source_concept:
+                        for target_name in main_component:
+                            target_concept = next(c for c in concepts if c['name'] == target_name)
+                            
+                            if 'embedding' in target_concept:
+                                similarity = self.cosine_similarity(
+                                    source_concept['embedding'],
+                                    target_concept['embedding']
+                                )
+                                if similarity > best_similarity:
+                                    best_similarity = similarity
+                                    best_source = source_name
+                                    best_target = target_name
+                
+                # Create bridge connection
+                if best_source and best_target:
+                    new_relationships.append({
+                        'source': best_source,
+                        'target': best_target,
+                        'type': 'related-to',
+                        'strength': max(0.5, float(best_similarity * 0.8)),
+                        'description': f'Bridge connection (component merge)',
+                        'inferred': True
+                    })
+                    # Update adjacency
+                    adjacency[best_source].add(best_target)
+                    adjacency[best_target].add(best_source)
+                else:
+                    # Fallback: connect highest importance from each
+                    source_concept = max(
+                        [c for c in concepts if c['name'] in component],
+                        key=lambda x: x.get('importance', 0)
+                    )
+                    target_concept = max(
+                        [c for c in concepts if c['name'] in main_component],
+                        key=lambda x: x.get('importance', 0)
+                    )
+                    new_relationships.append({
+                        'source': source_concept['name'],
+                        'target': target_concept['name'],
+                        'type': 'related-to',
+                        'strength': 0.6,
+                        'description': 'Bridge connection (fallback)',
+                        'inferred': True
+                    })
+        
+        # Step 4: Ensure isolated nodes are connected
+        # Re-check connectivity after adding bridges
+        for rel in new_relationships:
+            source = rel.get('source', '')
+            target = rel.get('target', '')
+            if source in concept_connections:
+                concept_connections[source] += 1
+            if target in concept_connections:
+                concept_connections[target] += 1
+        
+        # Find any remaining isolated nodes
+        isolated = [c for c in concepts if concept_connections[c['name']] == 0]
+        
+        for isolated_concept in isolated:
+            # Connect to nearest neighbor by embedding similarity
+            if 'embedding' in isolated_concept:
+                best_match = None
+                best_similarity = -1
+                
+                for concept in concepts:
+                    if concept['name'] != isolated_concept['name'] and 'embedding' in concept:
+                        similarity = self.cosine_similarity(
+                            isolated_concept['embedding'],
+                            concept['embedding']
+                        )
+                        if similarity > best_similarity:
+                            best_similarity = similarity
+                            best_match = concept
+                
+                if best_match:
+                    new_relationships.append({
+                        'source': isolated_concept['name'],
+                        'target': best_match['name'],
+                        'type': 'related-to',
+                        'strength': max(0.5, float(best_similarity * 0.8)),
+                        'description': 'Connectivity link',
+                        'inferred': True
+                    })
+                    concept_connections[isolated_concept['name']] += 1
+                    concept_connections[best_match['name']] += 1
+        
+        # Step 5: Assign tiers based on importance + connectivity
+        for concept in concepts:
+            importance = concept.get('importance', 0.5)
+            connections = concept_connections[concept['name']]
+            
+            # Core concepts: high importance (>0.7) OR well-connected (>=2 connections)
+            if importance > 0.7 or connections >= 2:
+                concept['tier'] = 1
+            else:
+                concept['tier'] = 2
+            
+            # Store connection count
+            concept['connections'] = connections
+        
+        # Step 6: Ensure at least one tier-1 concept exists
+        tier1_concepts = [c for c in concepts if c.get('tier') == 1]
+        if not tier1_concepts and concepts:
+            # Promote the highest importance concept to tier 1
+            highest = max(concepts, key=lambda x: x.get('importance', 0))
+            highest['tier'] = 1
+        
+        # Combine all relationships
+        enhanced_relationships = relationships + new_relationships
+        
+        # Verify connectivity
+        final_components = find_connected_components()
+        print(f"Final graph has {len(final_components)} connected component(s) - Target: 1")
+        print(f"Added {len(new_relationships)} inferred relationships for connectivity")
+        
+        return concepts, enhanced_relationships
+    
     def process_text(
         self,
         text: str,
@@ -465,7 +676,7 @@ Remember: Return ONLY the JSON object, no additional text."""
         
         This is the main entry point for text processing. It validates input,
         extracts concepts, generates embeddings, extracts relationships,
-        and returns a structured response.
+        builds hierarchy, and ensures connectivity.
         
         Args:
             text: Input text to process
@@ -477,44 +688,61 @@ Remember: Return ONLY the JSON object, no additional text."""
             
         Returns:
             Dictionary containing:
-            - concepts: List of extracted concept dictionaries (with embeddings if enabled)
-            - relationships: List of extracted relationship dictionaries (if extract_rels=True)
-            - metadata: Processing metadata (model used, parameters, etc.)
+            - concepts: List of extracted concept dictionaries (with tier info)
+            - relationships: List of extracted relationship dictionaries
+            - metadata: Processing metadata (model used, parameters, hierarchy info, etc.)
             
         Raises:
             ValueError: If text validation fails
             Exception: If processing fails
         """
-        # Extract concepts
+        # Step 1: Extract concepts
         concepts = self.extract_concepts(text, max_concepts, min_importance)
         
-        # Generate embeddings if requested
+        # Step 2: Generate embeddings if requested
         if generate_embeddings and len(concepts) > 0:
             concepts = self.add_embeddings_to_concepts(concepts)
+        
+        # Step 3: Extract relationships if requested and concepts exist
+        relationships = []
+        if extract_rels and len(concepts) > 0:
+            relationships = self.extract_relationships(text, concepts, min_strength)
+        
+        # Step 4: Build hierarchy and ensure connectivity
+        # This creates a consolidated, tiered graph with no islands
+        if len(concepts) > 0:
+            concepts, relationships = self.build_hierarchy_and_connectivity(
+                concepts, 
+                relationships
+            )
+        
+        # Step 5: Count tier distribution
+        tier1_count = sum(1 for c in concepts if c.get('tier') == 1)
+        tier2_count = sum(1 for c in concepts if c.get('tier') == 2)
+        inferred_rels = sum(1 for r in relationships if r.get('inferred', False))
         
         # Build response
         response = {
             "concepts": concepts,
+            "relationships": relationships,
             "metadata": {
                 "model": self.model,
                 "embedding_model": self.embedding_model,
                 "max_concepts": max_concepts,
                 "min_importance": min_importance,
+                "min_strength": min_strength,
                 "concepts_found": len(concepts),
+                "relationships_found": len(relationships),
+                "tier1_concepts": tier1_count,
+                "tier2_concepts": tier2_count,
+                "inferred_relationships": inferred_rels,
+                "explicit_relationships": len(relationships) - inferred_rels,
                 "input_length": len(text),
-                "embeddings_generated": generate_embeddings
+                "embeddings_generated": generate_embeddings,
+                "hierarchy_enabled": True,
+                "connectivity_ensured": True
             }
         }
-        
-        # Extract relationships if requested and concepts exist
-        if extract_rels and len(concepts) > 0:
-            relationships = self.extract_relationships(text, concepts, min_strength)
-            response["relationships"] = relationships
-            response["metadata"]["relationships_found"] = len(relationships)
-            response["metadata"]["min_strength"] = min_strength
-        else:
-            response["relationships"] = []
-            response["metadata"]["relationships_found"] = 0
         
         return response
 

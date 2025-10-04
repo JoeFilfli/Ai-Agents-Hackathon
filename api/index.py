@@ -294,9 +294,12 @@ async def process_text(request: TextProcessRequest):
                 "confidence": concept['importance'],
                 "metadata": {
                     "index": i,
-                    "has_embedding": 'embedding' in concept
+                    "has_embedding": 'embedding' in concept,
+                    "tier": concept.get('tier', 2),  # Tier 1=core, 2=detail
+                    "connections": concept.get('connections', 0),
                 },
-                "has_children": False  # Will be determined by graph structure
+                "has_children": False,  # Will be determined by graph structure
+                "tier": concept.get('tier', 2),  # Also at top level for easy access
             }
             
             # Add embedding if present
@@ -327,7 +330,8 @@ async def process_text(request: TextProcessRequest):
                     "weight": rel['strength'],
                     "confidence": rel['strength'],
                     "metadata": {
-                        "description": rel.get('description', '')
+                        "description": rel.get('description', ''),
+                        "inferred": rel.get('inferred', False)  # Track auto-generated links
                     }
                 }
                 edges.append(edge)

@@ -134,16 +134,16 @@ export default function TestMindmapPage() {
       display: 'flex', 
       flexDirection: 'column', 
       height: '100vh',
-      backgroundColor: '#f0f0f0',
+      backgroundColor: '#0f172a', // Slate-900
     }}>
       {/* Header */}
       <div style={{ 
         padding: '1rem', 
-        backgroundColor: 'white', 
-        borderBottom: '1px solid #e0e0e0',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        backgroundColor: '#1e293b', // Slate-800
+        borderBottom: '1px solid #334155', // Slate-700
+        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
       }}>
-        <h1 style={{ margin: 0, marginBottom: '1rem', fontSize: '24px' }}>
+        <h1 style={{ margin: 0, marginBottom: '1rem', fontSize: '24px', color: '#f1f5f9' }}>
           Mindmap Component Test (Task 14)
         </h1>
         
@@ -235,9 +235,10 @@ export default function TestMindmapPage() {
         <div style={{ 
           marginTop: '1rem', 
           padding: '0.75rem', 
-          backgroundColor: '#F3F4F6', 
+          backgroundColor: '#334155', // Slate-700
           borderRadius: '4px',
           fontSize: '14px',
+          color: '#e2e8f0', // Slate-200
         }}>
           <strong>Test Checklist (Task 15 - Node Interactions):</strong>
           <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
@@ -255,13 +256,14 @@ export default function TestMindmapPage() {
           <div style={{ 
             marginTop: '0.75rem', 
             padding: '0.5rem', 
-            backgroundColor: '#DBEAFE', 
+            backgroundColor: '#1e3a8a', // Blue-900
             borderRadius: '4px',
-            border: '1px solid #3B82F6'
+            border: '1px solid #3b82f6', // Blue-500
+            color: '#dbeafe', // Blue-100
           }}>
             <strong>💡 Interaction Guide:</strong>
             <ul style={{ margin: '0.25rem 0', paddingLeft: '1.5rem' }}>
-              <li><strong>Blue:</strong> Normal node</li>
+              <li><strong>Indigo:</strong> Normal node</li>
               <li><strong>Red:</strong> Selected node (single click)</li>
               <li><strong>Purple:</strong> Hovered node</li>
               <li><strong>Green:</strong> Connected nodes (when hovering)</li>

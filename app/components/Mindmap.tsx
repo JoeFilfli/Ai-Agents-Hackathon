@@ -72,15 +72,15 @@ export default function Mindmap({
     const cy = cytoscape({
       container: containerRef.current,
       
-      // Styling
+      // Styling - Dark Mode Theme
       style: [
-        // Node styles
+        // Base node styles
         {
           selector: 'node',
           style: {
-            'background-color': '#4F46E5',
+            'background-color': '#6366F1', // Indigo-500
             'label': 'data(label)',
-            'color': '#1F2937',
+            'color': '#F1F5F9', // Slate-100
             'text-valign': 'center',
             'text-halign': 'center',
             'font-size': '12px',
@@ -90,17 +90,42 @@ export default function Mindmap({
             'text-wrap': 'wrap',
             'text-max-width': '80px',
             'border-width': 2,
-            'border-color': '#6366F1',
+            'border-color': '#818CF8', // Indigo-400
             'text-outline-width': 2,
-            'text-outline-color': '#ffffff',
+            'text-outline-color': '#1e293b', // Slate-800 for dark background
+          } as any,
+        },
+        // Tier 1 nodes (core concepts) - larger and brighter
+        {
+          selector: 'node.tier-1',
+          style: {
+            'width': '80px',
+            'height': '80px',
+            'font-size': '14px',
+            'font-weight': '700',
+            'background-color': '#8B5CF6', // Purple-500 (brighter)
+            'border-color': '#A78BFA', // Purple-400
+            'border-width': 3,
+            'text-max-width': '100px',
+          } as any,
+        },
+        // Tier 2 nodes (detail concepts) - normal size
+        {
+          selector: 'node.tier-2',
+          style: {
+            'width': '60px',
+            'height': '60px',
+            'font-size': '11px',
+            'background-color': '#6366F1', // Indigo-500
+            'border-color': '#818CF8', // Indigo-400
           } as any,
         },
         // Selected node style
         {
           selector: 'node:selected',
           style: {
-            'background-color': '#DC2626',
-            'border-color': '#EF4444',
+            'background-color': '#EF4444', // Red-500
+            'border-color': '#F87171', // Red-400
             'border-width': 3,
           } as any,
         },
@@ -108,8 +133,8 @@ export default function Mindmap({
         {
           selector: 'node.highlighted',
           style: {
-            'background-color': '#F59E0B',
-            'border-color': '#FBBF24',
+            'background-color': '#F59E0B', // Amber-500
+            'border-color': '#FBBF24', // Amber-400
             'border-width': 3,
           } as any,
         },
@@ -117,8 +142,8 @@ export default function Mindmap({
         {
           selector: 'node.hovered',
           style: {
-            'background-color': '#8B5CF6',
-            'border-color': '#A78BFA',
+            'background-color': '#A78BFA', // Purple-400
+            'border-color': '#C4B5FD', // Purple-300
             'border-width': 3,
           } as any,
         },
@@ -126,8 +151,8 @@ export default function Mindmap({
         {
           selector: 'node.connected',
           style: {
-            'background-color': '#10B981',
-            'border-color': '#34D399',
+            'background-color': '#10B981', // Emerald-500
+            'border-color': '#34D399', // Emerald-400
             'border-width': 2,
           } as any,
         },
@@ -135,7 +160,7 @@ export default function Mindmap({
         {
           selector: 'node.dimmed',
           style: {
-            'opacity': 0.3,
+            'opacity': 0.2,
           } as any,
         },
         // Edge styles
@@ -143,13 +168,13 @@ export default function Mindmap({
           selector: 'edge',
           style: {
             'width': 2,
-            'line-color': '#9CA3AF',
-            'target-arrow-color': '#9CA3AF',
+            'line-color': '#64748B', // Slate-500
+            'target-arrow-color': '#64748B',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'label': 'data(label)',
             'font-size': '10px',
-            'color': '#6B7280',
+            'color': '#94A3B8', // Slate-400
             'text-rotation': 'autorotate',
             'text-margin-y': -10,
           } as any,
@@ -159,8 +184,8 @@ export default function Mindmap({
           selector: 'edge:selected',
           style: {
             'width': 3,
-            'line-color': '#DC2626',
-            'target-arrow-color': '#DC2626',
+            'line-color': '#EF4444', // Red-500
+            'target-arrow-color': '#EF4444',
           } as any,
         },
         // Connected edges (when hovering)
@@ -168,7 +193,7 @@ export default function Mindmap({
           selector: 'edge.connected',
           style: {
             'width': 3,
-            'line-color': '#10B981',
+            'line-color': '#10B981', // Emerald-500
             'target-arrow-color': '#10B981',
           } as any,
         },
@@ -176,7 +201,7 @@ export default function Mindmap({
         {
           selector: 'edge.dimmed',
           style: {
-            'opacity': 0.2,
+            'opacity': 0.15,
           } as any,
         },
       ],
@@ -347,7 +372,10 @@ export default function Mindmap({
         label: node.label,
         description: node.description,
         confidence: node.confidence,
+        tier: node.tier || 2, // Tier 1 = core, 2 = detail
       },
+      // Add tier-specific CSS classes
+      classes: node.tier === 1 ? 'tier-1' : 'tier-2',
     }));
 
     // Convert edges to Cytoscape format
@@ -486,8 +514,9 @@ export default function Mindmap({
         style={{
           width: '100%',
           height: '100%',
-          backgroundColor: '#F9FAFB',
+          backgroundColor: '#0F172A', // Slate-900
           borderRadius: '8px',
+          border: '1px solid #334155', // Slate-700
         }}
       />
       
@@ -510,15 +539,16 @@ export default function Mindmap({
             width: '40px',
             height: '40px',
             borderRadius: '8px',
-            backgroundColor: 'white',
-            border: '1px solid #D1D5DB',
+            backgroundColor: '#1E293B', // Slate-800
+            border: '1px solid #475569', // Slate-600
+            color: '#E2E8F0', // Slate-200
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '20px',
             fontWeight: 'bold',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           +
@@ -531,15 +561,16 @@ export default function Mindmap({
             width: '40px',
             height: '40px',
             borderRadius: '8px',
-            backgroundColor: 'white',
-            border: '1px solid #D1D5DB',
+            backgroundColor: '#1E293B', // Slate-800
+            border: '1px solid #475569', // Slate-600
+            color: '#E2E8F0', // Slate-200
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '20px',
             fontWeight: 'bold',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           −
@@ -552,14 +583,15 @@ export default function Mindmap({
             width: '40px',
             height: '40px',
             borderRadius: '8px',
-            backgroundColor: 'white',
-            border: '1px solid #D1D5DB',
+            backgroundColor: '#1E293B', // Slate-800
+            border: '1px solid #475569', // Slate-600
+            color: '#E2E8F0', // Slate-200
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '14px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           ⊡
@@ -572,14 +604,15 @@ export default function Mindmap({
             width: '40px',
             height: '40px',
             borderRadius: '8px',
-            backgroundColor: 'white',
-            border: '1px solid #D1D5DB',
+            backgroundColor: '#1E293B', // Slate-800
+            border: '1px solid #475569', // Slate-600
+            color: '#E2E8F0', // Slate-200
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '14px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           ↻
@@ -595,15 +628,15 @@ export default function Mindmap({
             left: '50%',
             transform: 'translate(-50%, -50%)',
             textAlign: 'center',
-            color: '#9CA3AF',
+            color: '#64748B', // Slate-500
             pointerEvents: 'none',
           }}
         >
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗺️</div>
-          <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
+          <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: '#94A3B8' }}>
             No Graph Loaded
           </div>
-          <div style={{ fontSize: '14px' }}>
+          <div style={{ fontSize: '14px', color: '#64748B' }}>
             Process some text to generate a knowledge graph
           </div>
         </div>
@@ -617,13 +650,13 @@ export default function Mindmap({
             top: '20px',
             left: '20px',
             padding: '8px 16px',
-            backgroundColor: 'white',
+            backgroundColor: '#1E293B', // Slate-800
             borderRadius: '8px',
-            border: '1px solid #D1D5DB',
+            border: '1px solid #475569', // Slate-600
             fontSize: '14px',
             fontWeight: '600',
-            color: '#374151',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            color: '#E2E8F0', // Slate-200
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           {nodes.length} nodes • {edges.length} edges

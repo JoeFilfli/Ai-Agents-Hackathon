@@ -2,18 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force dark mode theme throughout the app */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --foreground-rgb: 241, 245, 249; /* Slate-100 */
+  --background-start-rgb: 15, 23, 42; /* Slate-900 */
+  --background-end-rgb: 15, 23, 42; /* Slate-900 */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+html {
+  background-color: rgb(15, 23, 42); /* Slate-900 */
 }
 
 body {
@@ -24,4 +21,6 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  margin: 0;
+  padding: 0;
 }
